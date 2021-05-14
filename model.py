@@ -49,7 +49,7 @@ less_aggresive_ini = False
 conv_padding = "SAME"
 padding_offset = 32
 
-def get_tensors(dataroot, name, camera_pos, shader_time, output_type='remove_constant', nsamples=1, shader_name='zigzag', geometry='plane', feature_w=[], color_inds=[], intersection=True, manual_features_only=False, aux_plus_manual_features=False, h_start=0, h_offset=height, w_start=0, w_offset=width, samples=None, fov='regular', t_sigma=1/60.0, first_last_only=False, last_only=False, subsample_loops=-1, last_n=-1, first_n=-1, first_n_no_last=-1, mean_var_only=False, zero_samples=False, render_fix_spatial_sample=False, render_fix_temporal_sample=False, render_zero_spatial_sample=False, spatial_samples=None, temporal_samples=None, every_nth=-1, every_nth_stratified=False, one_hop_parent=False, target_idx=[], use_manual_index=False, manual_index_file='', additional_features=True, ignore_last_n_scale=0, include_noise_feature=False, crop_h=-1, crop_w=-1, no_noise_feature=False, relax_clipping=False, render_sigma=None, same_sample_all_pix=False, stratified_sample_higher_res=False, samples_int=[None], texture_maps=[], partial_trace=1.0, use_lstm=False, lstm_nfeatures_per_group=1, rotate=0, flip=0, automatic_subsample=False, automate_raymarching_def=False, chron_order=False, def_loop_log_last=False, temporal_texture_buffer=False, texture_inds=[], log_only_return_def_raymarching=True, debug=[], SELECT_FEATURE_THRE=200, n_boids=40, log_getitem=True, color_scale=[], parallel_stack=True, input_feature_pl=[], input_to_shader=[], trace_features=[], input_feature_scale_bias=[], finite_diff=False, feature_normalize_lo_pct=20, get_col_aux_inds=False, specified_ind=None, write_file=True, alt_dir='', strict_clipping_inference=False, add_positional_encoding=False, base_freq_x=1, base_freq_y=1):
+def get_tensors(dataroot, name, camera_pos, shader_time, output_type='remove_constant', nsamples=1, shader_name='zigzag', geometry='plane', feature_w=[], color_inds=[], intersection=True, manual_features_only=False, aux_plus_manual_features=False, h_start=0, h_offset=height, w_start=0, w_offset=width, samples=None, fov='regular', t_sigma=1/60.0, first_last_only=False, last_only=False, subsample_loops=-1, last_n=-1, first_n=-1, first_n_no_last=-1, mean_var_only=False, zero_samples=False, render_fix_spatial_sample=False, render_fix_temporal_sample=False, render_zero_spatial_sample=False, spatial_samples=None, temporal_samples=None, every_nth=-1, every_nth_stratified=False, one_hop_parent=False, target_idx=[], use_manual_index=False, manual_index_file='', additional_features=True, ignore_last_n_scale=0, include_noise_feature=False, crop_h=-1, crop_w=-1, no_noise_feature=False, relax_clipping=False, render_sigma=None, same_sample_all_pix=False, stratified_sample_higher_res=False, samples_int=[None], texture_maps=[], partial_trace=1.0, use_lstm=False, lstm_nfeatures_per_group=1, rotate=0, flip=0, automatic_subsample=False, automate_raymarching_def=False, chron_order=False, def_loop_log_last=False, temporal_texture_buffer=False, texture_inds=[], log_only_return_def_raymarching=True, debug=[], SELECT_FEATURE_THRE=200, n_boids=40, log_getitem=True, color_scale=[], parallel_stack=True, input_feature_pl=[], input_to_shader=[], trace_features=[], input_feature_scale_bias=[], finite_diff=False, feature_normalize_lo_pct=20, get_col_aux_inds=False, specified_ind=None, write_file=True, alt_dir='', strict_clipping_inference=False, add_positional_encoding=False, base_freq_x=1, base_freq_y=1, whitening=True, clamping=True):
     
     manual_features_only = manual_features_only or aux_plus_manual_features
 
@@ -158,23 +158,9 @@ def get_tensors(dataroot, name, camera_pos, shader_time, output_type='remove_con
                 for k in range(len(manual_features)):
                     feature = manual_features[k]
                     if not isinstance(feature, (float, int)):
-                        try:
-                            raw_ind = valid_features.index(feature)
-                            manual_inds.append(raw_ind)
-                            manual_features_valid.append(feature)
-                        except ValueError:
-                            if k == len(manual_features) - 1:
-                                # t_ray case
-                                assert geometry in ['hyperboloid1', 'paraboloid']
-                                t_ray_bias = numpy.load(os.path.join(dataroot, 't_ray_bias.npy'))
-                                t_ray_scale = numpy.load(os.path.join(dataroot, 't_ray_scale.npy'))
-                                additional_bias.append(t_ray_bias[0])
-                                additional_scale.append(t_ray_scale[0])
-                                manual_features_valid.append(feature)
-                            else:
-                                raise
-                        except:
-                            raise
+                        raw_ind = valid_features.index(feature)
+                        manual_inds.append(raw_ind)
+                        manual_features_valid.append(feature)
                 out_features = manual_features_valid
                 # hack for fluid approx mode: because we also add texture to aux features, should include their inds
                 if temporal_texture_buffer and (not isinstance(texture_maps, list)):
@@ -373,8 +359,9 @@ def get_tensors(dataroot, name, camera_pos, shader_time, output_type='remove_con
                 color_scale.append(feature_scale[color_inds])
 
             if (output_type not in ['rgb', 'bgr']):
-                features += feature_bias
-                features *= feature_scale
+                if whitening:
+                    features += feature_bias
+                    features *= feature_scale
 
                 # sanity check for manual features
                 if manual_features_only and False:
@@ -387,8 +374,10 @@ def get_tensors(dataroot, name, camera_pos, shader_time, output_type='remove_con
                             manual_features_valid.append(feature)
                     manual_features_valid = tf.parallel_stack(manual_features_valid)
                     manual_features_valid = tf.transpose(manual_features_valid, [1, 2, 3, 0])
-                    manual_features_valid += feature_bias[manual_inds]
-                    manual_features_valid *= feature_scale[manual_inds]
+                    
+                    if whitening:
+                        manual_features_valid += feature_bias[manual_inds]
+                        manual_features_valid *= feature_scale[manual_inds]
 
                     camera_pos_val = numpy.load(os.path.join(dataroot, 'train.npy'))
                     feed_dict = {camera_pos: camera_pos_val[0], shader_time:[0]}
@@ -407,14 +396,25 @@ def get_tensors(dataroot, name, camera_pos, shader_time, output_type='remove_con
                 features_clipped = tf.clip_by_value(features, 0.0, 1.0)
                 features = features_clipped
             else:
-                features -= 0.5
-                features *= 2
-                if strict_clipping_inference:
-                    features = tf.clip_by_value(features, -1.0, 1.0)
-                else:
-                    features = tf.clip_by_value(features, -2.0, 2.0)
-                #features = tf.clip_by_value(features, -1.0, 2.0)
-            #features = tf.minimum(tf.maximum(features, 0.0), 1.0)
+                
+                if whitening and clamping:
+                    features -= 0.5
+                    features *= 2
+                    if strict_clipping_inference:
+                        features = tf.clip_by_value(features, -1.0, 1.0)
+                    else:
+                        features = tf.clip_by_value(features, -2.0, 2.0)
+                elif clamping:
+                    clamp_lo = -feature_bias
+                    clamp_hi = 1 / feature_scale - feature_bias
+                    
+                    # set clamp_lo and clamp_hi the same size as features
+                    clamp_lo = tf.expand_dims(tf.expand_dims(tf.expand_dims(clamp_lo, 0), 0), 0)
+                    clamp_hi = tf.expand_dims(tf.expand_dims(tf.expand_dims(clamp_hi, 0), 0), 0)
+                    clamp_lo = tf.tile(clamp_lo, [features.shape[0], features.shape[1], features.shape[2], 1])
+                    clamp_hi = tf.tile(clamp_hi, [features.shape[0], features.shape[1], features.shape[2], 1])
+                    
+                    features = tf.clip_by_value(features, clamp_lo, clamp_hi)
 
             features = tf.where(tf.is_nan(features), tf.zeros_like(features), features)
     if crop_h > 0:
@@ -615,8 +615,6 @@ def get_shader(x, f_log_intermediate, f_log_intermediate_subset, camera_pos, fea
     # adding depth
     if geometry == 'plane':
         f_log_intermediate_subset[-1] = features[7]
-    elif geometry in ['hyperboloid1', 'paraboloid']:
-        f_log_intermediate_subset[-1] = extra_args[0]
     elif geometry not in ['none', 'texture', 'texture_approximate_10f', 'boids', 'boids_coarse']:
         raise
 
@@ -630,9 +628,6 @@ def get_shader(x, f_log_intermediate, f_log_intermediate_subset, camera_pos, fea
             if geometry == 'plane':
                 u_ind = 1
                 v_ind = 2
-            elif geometry in ['hyperboloid1', 'sphere', 'paraboloid']:
-                u_ind = 8
-                v_ind = 9
             else:
                 raise
 
@@ -951,7 +946,7 @@ def prepare_data_root(dataroot, additional_input=False):
     return output_names, val_img_names, map_names, val_map_names, grad_names, val_grad_names, add_names, val_add_names, validate_img_names, validate_add_names
 
 def generate_parser():
-    parser = argparse_util.ArgumentParser(description='FastImageProcessing')
+    parser = argparse_util.ArgumentParser(description='LearningFromProgramTrace')
     parser.add_argument('--name', dest='name', default='', help='name of task')
     parser.add_argument('--dataroot', dest='dataroot', default='../data', help='directory to store training and testing data')
     parser.add_argument('--is_train', dest='is_train', action='store_true', help='state whether this is training or testing')
@@ -1146,6 +1141,8 @@ def generate_parser():
     parser.add_argument('--add_positional_encoding', dest='add_positional_encoding', action='store_true', help='if specified, add positional encoding on top of existing features')
     parser.add_argument('--base_freq_x', dest='base_freq_x', type=float, default=1, help='specifies the base freq on x dimension for positional encoding')
     parser.add_argument('--base_freq_y', dest='base_freq_y', type=float, default=1, help='specifies the base freq on y dimension for positional encoding')
+    parser.add_argument('--no_whitening', dest='whitening', action='store_false', help='if specified, do not apply whitening to raw trace data')
+    parser.add_argument('--no_clamping', dest='clamping', action='store_false', help='if specified, do not apply clamping to raw trace data')
     
     parser.set_defaults(is_train=False)
     parser.set_defaults(use_batch=False)
@@ -1246,6 +1243,8 @@ def generate_parser():
     parser.set_defaults(allow_non_gan_low_var=False)
     parser.set_defaults(generate_adjacent_seq=False)
     parser.set_defaults(add_positional_encoding=False)
+    parser.set_defaults(clamping=True)
+    parser.set_defaults(whitening=True)
     
     return parser
 
@@ -1255,62 +1254,6 @@ def main():
     args = parser.parse_args()
 
     main_network(args)
-
-def copy_option(args):
-    new_args = copy.copy(args)
-    delattr(new_args, 'is_train')
-    delattr(new_args, 'dataroot')
-    delattr(new_args, 'test_training')
-    delattr(new_args, 'which_epoch')
-    delattr(new_args, 'debug_mode')
-    delattr(new_args, 'mean_estimator')
-    delattr(new_args, 'estimator_samples')
-    delattr(new_args, 'preload')
-    delattr(new_args, 'accurate_timing')
-    delattr(new_args, 'render_only')
-    delattr(new_args, 'render_camera_pos')
-    delattr(new_args, 'render_t')
-    delattr(new_args, 'mean_estimator_memory_efficient')
-    delattr(new_args, 'render_fix_spatial_sample')
-    delattr(new_args, 'render_fix_temporal_sample')
-    delattr(new_args, 'render_zero_spatial_sample')
-    delattr(new_args, 'render_fov')
-    delattr(new_args, 'zero_out_sparsity_vec')
-    delattr(new_args, 'sparsity_vec_histogram')
-    delattr(new_args, 'write_summary')
-    delattr(new_args, 'analyze_channel')
-    delattr(new_args, 'bad_example_base_dir')
-    delattr(new_args, 'analyze_current_only')
-    delattr(new_args, 'save_intermediate_epoch')
-    delattr(new_args, 'render_temporal_texture')
-    delattr(new_args, 'inference_seq_len')
-    delattr(new_args, 'repeat_timing')
-    delattr(new_args, 'boids_single_step_metric')
-    delattr(new_args, 'analyze_nn_discontinuity')
-    delattr(new_args, 'optimize_input')
-    delattr(new_args, 'optimize_target_img')
-    delattr(new_args, 'target_img')
-    delattr(new_args, 'list_parameter_idx')
-    delattr(new_args, 'collect_inference_tensor')
-    delattr(new_args, 'optimize_nn_input_feature_space')
-    delattr(new_args, 'render_no_video')
-    delattr(new_args, 'render_dirname')
-    delattr(new_args, 'render_tile_start')
-    delattr(new_args, 'feed_dict_optimize_input')
-    delattr(new_args, 'finite_diff')
-    delattr(new_args, 'collect_validate_loss')
-    delattr(new_args, 'read_from_best_validation')
-    delattr(new_args, 'get_col_aux_inds')
-    delattr(new_args, 'specified_ind')
-    delattr(new_args, 'test_output_dir')
-    delattr(new_args, 'name')
-    delattr(new_args, 'overwrite_option_file')
-    delattr(new_args, 'alt_ckpt_base_dir')
-    delattr(new_args, 'boids_seq_metric')
-    delattr(new_args, 'strict_clipping_inference')
-    delattr(new_args, 'generate_adjacent_seq')
-    delattr(new_args, 'nrepeat')
-    return new_args
 
 def main_network(args):
 
@@ -1981,7 +1924,7 @@ def main_network(args):
         def generate_input_to_network_wrapper():
             def func(texture_maps_input):
             
-                return get_tensors(args.dataroot, args.name, camera_pos, shader_time, output_type, shader_samples, shader_name=args.shader_name, geometry=args.geometry, feature_w=feature_w, color_inds=color_inds, intersection=args.intersection, manual_features_only=args.manual_features_only, aux_plus_manual_features=args.aux_plus_manual_features, h_start=h_start, h_offset=h_offset, w_start=w_start, w_offset=w_offset, samples=feed_samples, fov=args.fov, first_last_only=args.first_last_only, last_only=args.last_only, subsample_loops=args.subsample_loops, last_n=args.last_n, first_n=args.first_n, first_n_no_last=args.first_n_no_last, mean_var_only=args.mean_var_only, zero_samples=zero_samples, render_fix_spatial_sample=args.render_fix_spatial_sample, render_fix_temporal_sample=args.render_fix_temporal_sample, render_zero_spatial_sample=args.render_zero_spatial_sample, spatial_samples=spatial_samples, temporal_samples=temporal_samples, every_nth=args.every_nth, every_nth_stratified=args.every_nth_stratified, one_hop_parent=args.one_hop_parent, target_idx=target_idx, use_manual_index=args.use_manual_index, manual_index_file=args.manual_index_file, additional_features=args.additional_features, ignore_last_n_scale=args.ignore_last_n_scale, include_noise_feature=args.include_noise_feature, crop_h=args.crop_h, crop_w=args.crop_w, no_noise_feature=args.no_noise_feature, relax_clipping=args.relax_clipping, render_sigma=render_sigma, same_sample_all_pix=args.same_sample_all_pix, stratified_sample_higher_res=args.stratified_sample_higher_res, samples_int=samples_int, texture_maps=texture_maps_input, partial_trace=args.partial_trace, use_lstm=args.use_lstm, lstm_nfeatures_per_group=args.lstm_nfeatures_per_group, rotate=rotate, flip=flip, automatic_subsample=args.automatic_subsample, automate_raymarching_def=args.automate_raymarching_def, chron_order=args.chron_order, def_loop_log_last=args.def_loop_log_last, temporal_texture_buffer=args.temporal_texture_buffer, texture_inds=texture_inds, log_only_return_def_raymarching=args.log_only_return_def_raymarching, SELECT_FEATURE_THRE=args.SELECT_FEATURE_THRE, n_boids=args.n_boids, log_getitem=args.log_getitem, debug=debug, color_scale=color_scale, parallel_stack=not args.optimize_input, input_feature_pl=input_feature_pl, input_to_shader=input_to_shader, trace_features=trace_features, input_feature_scale_bias=input_feature_scale_bias, finite_diff=args.finite_diff, feature_normalize_lo_pct=args.feature_normalize_lo_pct, get_col_aux_inds=args.get_col_aux_inds, specified_ind=specified_ind, write_file=args.overwrite_option_file, alt_dir=args.test_output_dir, strict_clipping_inference=args.strict_clipping_inference, add_positional_encoding=args.add_positional_encoding, base_freq_x=args.base_freq_x, base_freq_y=args.base_freq_y)
+                return get_tensors(args.dataroot, args.name, camera_pos, shader_time, output_type, shader_samples, shader_name=args.shader_name, geometry=args.geometry, feature_w=feature_w, color_inds=color_inds, intersection=args.intersection, manual_features_only=args.manual_features_only, aux_plus_manual_features=args.aux_plus_manual_features, h_start=h_start, h_offset=h_offset, w_start=w_start, w_offset=w_offset, samples=feed_samples, fov=args.fov, first_last_only=args.first_last_only, last_only=args.last_only, subsample_loops=args.subsample_loops, last_n=args.last_n, first_n=args.first_n, first_n_no_last=args.first_n_no_last, mean_var_only=args.mean_var_only, zero_samples=zero_samples, render_fix_spatial_sample=args.render_fix_spatial_sample, render_fix_temporal_sample=args.render_fix_temporal_sample, render_zero_spatial_sample=args.render_zero_spatial_sample, spatial_samples=spatial_samples, temporal_samples=temporal_samples, every_nth=args.every_nth, every_nth_stratified=args.every_nth_stratified, one_hop_parent=args.one_hop_parent, target_idx=target_idx, use_manual_index=args.use_manual_index, manual_index_file=args.manual_index_file, additional_features=args.additional_features, ignore_last_n_scale=args.ignore_last_n_scale, include_noise_feature=args.include_noise_feature, crop_h=args.crop_h, crop_w=args.crop_w, no_noise_feature=args.no_noise_feature, relax_clipping=args.relax_clipping, render_sigma=render_sigma, same_sample_all_pix=args.same_sample_all_pix, stratified_sample_higher_res=args.stratified_sample_higher_res, samples_int=samples_int, texture_maps=texture_maps_input, partial_trace=args.partial_trace, use_lstm=args.use_lstm, lstm_nfeatures_per_group=args.lstm_nfeatures_per_group, rotate=rotate, flip=flip, automatic_subsample=args.automatic_subsample, automate_raymarching_def=args.automate_raymarching_def, chron_order=args.chron_order, def_loop_log_last=args.def_loop_log_last, temporal_texture_buffer=args.temporal_texture_buffer, texture_inds=texture_inds, log_only_return_def_raymarching=args.log_only_return_def_raymarching, SELECT_FEATURE_THRE=args.SELECT_FEATURE_THRE, n_boids=args.n_boids, log_getitem=args.log_getitem, debug=debug, color_scale=color_scale, parallel_stack=not args.optimize_input, input_feature_pl=input_feature_pl, input_to_shader=input_to_shader, trace_features=trace_features, input_feature_scale_bias=input_feature_scale_bias, finite_diff=args.finite_diff, feature_normalize_lo_pct=args.feature_normalize_lo_pct, get_col_aux_inds=args.get_col_aux_inds, specified_ind=specified_ind, write_file=args.overwrite_option_file, alt_dir=args.test_output_dir, strict_clipping_inference=args.strict_clipping_inference, add_positional_encoding=args.add_positional_encoding, base_freq_x=args.base_freq_x, base_freq_y=args.base_freq_y, whitening=args.whitening, clamping=args.clamping)
             
             return func
             
@@ -2489,7 +2432,7 @@ def main_network(args):
         perceptual_loss_add = args.perceptual_loss_scale * loss_vgg
         loss += perceptual_loss_add
     elif args.lpips_loss:
-        sys.path += ['../../lpips-tensorflow']
+        sys.path += ['lpips-tensorflow']
         import lpips_tf
         if args.train_temporal_seq and (args.is_train or args.collect_validate_loss):
             loss_lpips = 0.0
