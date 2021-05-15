@@ -17,16 +17,13 @@ import numpy
 import numpy.random
 import random
 import argparse_util
-import pickle
 from tensorflow.python.client import timeline
 import copy
 import sys;
 import importlib
 import importlib.util
-import subprocess
 import shutil
 from tf_util import *
-import json
 import glob
 
 import warnings
@@ -49,7 +46,7 @@ less_aggresive_ini = False
 conv_padding = "SAME"
 padding_offset = 32
 
-def get_tensors(dataroot, name, camera_pos, shader_time, output_type='remove_constant', nsamples=1, shader_name='zigzag', geometry='plane', feature_w=[], color_inds=[], intersection=True, manual_features_only=False, aux_plus_manual_features=False, h_start=0, h_offset=height, w_start=0, w_offset=width, samples=None, fov='regular', t_sigma=1/60.0, first_last_only=False, last_only=False, subsample_loops=-1, last_n=-1, first_n=-1, first_n_no_last=-1, mean_var_only=False, zero_samples=False, render_fix_spatial_sample=False, render_fix_temporal_sample=False, render_zero_spatial_sample=False, spatial_samples=None, temporal_samples=None, every_nth=-1, every_nth_stratified=False, one_hop_parent=False, target_idx=[], use_manual_index=False, manual_index_file='', additional_features=True, ignore_last_n_scale=0, include_noise_feature=False, crop_h=-1, crop_w=-1, no_noise_feature=False, relax_clipping=False, render_sigma=None, same_sample_all_pix=False, stratified_sample_higher_res=False, samples_int=[None], texture_maps=[], partial_trace=1.0, use_lstm=False, lstm_nfeatures_per_group=1, rotate=0, flip=0, automatic_subsample=False, automate_raymarching_def=False, chron_order=False, def_loop_log_last=False, temporal_texture_buffer=False, texture_inds=[], log_only_return_def_raymarching=True, debug=[], SELECT_FEATURE_THRE=200, n_boids=40, log_getitem=True, color_scale=[], parallel_stack=True, input_feature_pl=[], input_to_shader=[], trace_features=[], input_feature_scale_bias=[], finite_diff=False, feature_normalize_lo_pct=20, get_col_aux_inds=False, specified_ind=None, write_file=True, alt_dir='', strict_clipping_inference=False, add_positional_encoding=False, base_freq_x=1, base_freq_y=1, whitening=True, clamping=True):
+def get_tensors(dataroot, name, camera_pos, shader_time, output_type='remove_constant', nsamples=1, shader_name='zigzag', geometry='plane', color_inds=[], manual_features_only=False, aux_plus_manual_features=False, h_start=0, h_offset=height, w_start=0, w_offset=width, samples=None, fov='regular', first_last_only=False, last_only=False, subsample_loops=-1, last_n=-1, first_n=-1, first_n_no_last=-1, mean_var_only=False, zero_samples=False, render_fix_spatial_sample=False, render_zero_spatial_sample=False, spatial_samples=None, every_nth=-1, every_nth_stratified=False, target_idx=[], use_manual_index=False, manual_index_file='', additional_features=True, ignore_last_n_scale=0, include_noise_feature=False, crop_h=-1, crop_w=-1, no_noise_feature=False, relax_clipping=False, render_sigma=None, same_sample_all_pix=False, samples_int=[None], texture_maps=[], partial_trace=1.0, rotate=0, flip=0, automatic_subsample=False, automate_raymarching_def=False, chron_order=False, def_loop_log_last=False, temporal_texture_buffer=False, texture_inds=[], log_only_return_def_raymarching=True, debug=[], SELECT_FEATURE_THRE=200, n_boids=40, log_getitem=True, color_scale=[], parallel_stack=True, input_to_shader=[], trace_features=[], finite_diff=False, feature_normalize_lo_pct=20, get_col_aux_inds=False, specified_ind=None, write_file=True, alt_dir='', strict_clipping_inference=False, add_positional_encoding=False, base_freq_x=1, base_freq_y=1, whitening=True, clamping=True):
     
     manual_features_only = manual_features_only or aux_plus_manual_features
 
@@ -83,21 +80,11 @@ def get_tensors(dataroot, name, camera_pos, shader_time, output_type='remove_con
     spec.loader.exec_module(compiler_module)
     
     texture_map_size = []
-    
-    if len(input_feature_pl) > 0:
-        feature_pl = [None] * len(input_feature_pl)
-        for i in range(len(input_feature_pl)):
-            if input_feature_pl[i].dtype != dtype:
-                feature_pl[i] = tf.cast(input_feature_pl[i], dtype)
-            else:
-                feature_pl[i] = input_feature_pl[i]
-    else:
-        feature_pl = []
 
-    features, vec_output, manual_features = get_render(camera_pos, shader_time, nsamples=nsamples, shader_name=shader_name, geometry=geometry, return_vec_output=True, compiler_module=compiler_module, manual_features_only=manual_features_only, aux_plus_manual_features=aux_plus_manual_features, h_start=h_start, h_offset=h_offset, w_start=w_start, w_offset=w_offset, samples=samples, fov=fov, t_sigma=t_sigma, zero_samples=zero_samples, render_fix_spatial_sample=render_fix_spatial_sample, render_fix_temporal_sample=render_fix_temporal_sample, render_zero_spatial_sample=render_zero_spatial_sample, spatial_samples=spatial_samples, temporal_samples=temporal_samples, additional_features=additional_features, include_noise_feature=include_noise_feature, no_noise_feature=no_noise_feature, render_sigma=render_sigma, same_sample_all_pix=same_sample_all_pix, stratified_sample_higher_res=stratified_sample_higher_res, samples_int=samples_int, texture_maps=texture_maps, temporal_texture_buffer=temporal_texture_buffer, n_boids=n_boids, texture_map_size=texture_map_size, debug=debug, input_feature_pl=feature_pl, input_to_shader=input_to_shader, finite_diff=finite_diff)
-    
-    if len(input_feature_pl) > 0:
-        features = features + vec_output
+    feature_pl = []
+
+    features, vec_output, manual_features = get_render(camera_pos, shader_time, nsamples=nsamples, shader_name=shader_name, geometry=geometry, return_vec_output=True, compiler_module=compiler_module, manual_features_only=manual_features_only, aux_plus_manual_features=aux_plus_manual_features, h_start=h_start, h_offset=h_offset, w_start=w_start, w_offset=w_offset, samples=samples, fov=fov, zero_samples=zero_samples, render_fix_spatial_sample=render_fix_spatial_sample, render_zero_spatial_sample=render_zero_spatial_sample, spatial_samples=spatial_samples, additional_features=additional_features, include_noise_feature=include_noise_feature, no_noise_feature=no_noise_feature, render_sigma=render_sigma, same_sample_all_pix=same_sample_all_pix, samples_int=samples_int, texture_maps=texture_maps, temporal_texture_buffer=temporal_texture_buffer, n_boids=n_boids, texture_map_size=texture_map_size, debug=debug, input_to_shader=input_to_shader, finite_diff=finite_diff)
+
 
     features = features + vec_output + manual_features
         
@@ -292,27 +279,12 @@ def get_tensors(dataroot, name, camera_pos, shader_time, output_type='remove_con
                     feature_bias[ind] = 0.0
                     feature_scale[ind] = 1.0
 
-            if stratified_sample_higher_res:
-                if not no_noise_feature:
-                    feature_bias[-2] = 0.0
-                    feature_bias[-1] = 0.5
-                    feature_scale[-2] = 1.0
-                    feature_scale[-1] = 1.0
-
-            if use_lstm:
-                ngroups = np.ceil(len(out_features) / lstm_nfeatures_per_group)
-                npaddings = int(ngroups * lstm_nfeatures_per_group - len(out_features))
-                out_features = [tf.zeros_like(out_features[0])] * npaddings + out_features
-                feature_bias = np.concatenate((np.zeros(npaddings), feature_bias))
-                feature_scale = np.concatenate((np.ones(npaddings), feature_scale))
             
             if len(feature_pl) > 0:
                 for var in feature_pl:
                     if var in out_features:
                         idx = out_features.index(var)
-                        input_feature_scale_bias.append((feature_scale[idx], feature_bias[idx]))
-                    else:
-                        input_feature_scale_bias.append(None)
+
             
             if add_positional_encoding:
                 assert geometry == 'plane' and len(input_to_shader) == 8
@@ -363,29 +335,6 @@ def get_tensors(dataroot, name, camera_pos, shader_time, output_type='remove_con
                     features += feature_bias
                     features *= feature_scale
 
-                # sanity check for manual features
-                if manual_features_only and False:
-                    manual_inds = []
-                    manual_features_valid = []
-                    for feature in manual_features:
-                        if not isinstance(feature, (float, int)):
-                            raw_ind = valid_features.index(feature)
-                            manual_inds.append(raw_ind)
-                            manual_features_valid.append(feature)
-                    manual_features_valid = tf.parallel_stack(manual_features_valid)
-                    manual_features_valid = tf.transpose(manual_features_valid, [1, 2, 3, 0])
-                    
-                    if whitening:
-                        manual_features_valid += feature_bias[manual_inds]
-                        manual_features_valid *= feature_scale[manual_inds]
-
-                    camera_pos_val = numpy.load(os.path.join(dataroot, 'train.npy'))
-                    feed_dict = {camera_pos: camera_pos_val[0], shader_time:[0]}
-                    sess = tf.Session()
-                    manual_features_val, features_val = sess.run([manual_features_valid, features], feed_dict=feed_dict)
-                    for k in range(len(manual_inds)):
-                        print(numpy.max(numpy.abs(manual_features_val[:, :, :, k] - features_val[:, :, :, manual_inds[k]])))
-
             elif output_type in ['rgb', 'bgr']: # workaround because clip_by_value will make all nans to be the higher value
                 features = tf.where(tf.is_nan(features), tf.zeros_like(features), features)
                 if shader_name.startswith('boids'):
@@ -423,19 +372,12 @@ def get_tensors(dataroot, name, camera_pos, shader_time, output_type='remove_con
         features = features[:, :, :crop_w, :]
     
     if isinstance(rotate, tf.Tensor):
-        # TODO: it's a hack that rotate is a scalar
-        # it should be a seperate value for each sample in a batch, and they could either be rotated or not
-        # but it's much easeir to code if treat rotate as a scalar for the whole batch
         features = tf.cond(rotate > 0, lambda: tf.image.rot90(features, rotate), lambda: features)
     if isinstance(flip, tf.Tensor):
-        # as long as rotate and flip are 2 seperate generated random integers, these 2 values combined can generate all 8 different random permutation in the image space
         features = tf.cond(flip > 0, lambda: tf.image.flip_left_right(features), lambda: features)
     return features
 
-    #numpy.save('valid_inds.npy', valid_inds)
-    #return features
-
-def get_render(camera_pos, shader_time, samples=None, nsamples=1, shader_name='zigzag', color_inds=None, return_vec_output=False, render_size=None, render_sigma=None, compiler_module=None, geometry='plane', zero_samples=False, debug=[], extra_args=[None], render_g=False, manual_features_only=False, aux_plus_manual_features=False, fov='regular', h_start=0, h_offset=height, w_start=0, w_offset=width, t_sigma=1/60.0, render_fix_spatial_sample=False, render_fix_temporal_sample=False, render_zero_spatial_sample=False, spatial_samples=None, temporal_samples=None, additional_features=True, include_noise_feature=False, no_noise_feature=False, same_sample_all_pix=False, stratified_sample_higher_res=False, samples_int=[None], texture_maps=[], temporal_texture_buffer=False, n_boids=40, texture_map_size=[], input_feature_pl=[], input_to_shader=[], finite_diff=False):
+def get_render(camera_pos, shader_time, samples=None, nsamples=1, shader_name='zigzag', color_inds=None, return_vec_output=False, render_size=None, render_sigma=None, compiler_module=None, geometry='plane', zero_samples=False, debug=[], extra_args=[None], manual_features_only=False, aux_plus_manual_features=False, fov='regular', h_start=0, h_offset=height, w_start=0, w_offset=width, render_fix_spatial_sample=False, render_zero_spatial_sample=False, spatial_samples=None, additional_features=True, include_noise_feature=False, no_noise_feature=False, same_sample_all_pix=False, samples_int=[None], texture_maps=[], temporal_texture_buffer=False, n_boids=40, texture_map_size=[], input_to_shader=[], finite_diff=False):
 
     assert compiler_module is not None
 
@@ -484,7 +426,7 @@ def get_render(camera_pos, shader_time, samples=None, nsamples=1, shader_name='z
 
     f_log_intermediate = [None] * features_len
     vec_output = [None] * vec_output_len
-    #vec_output[0] = {camera_pos: np.expand_dims(np.array([-0.07611784,  3.81202799, -1.45621813,  5.82435499,  4.37503681, 2.70497378]), 1), shader_time: np.array([1.7]), h_start:np.array([-16.]), w_start:np.array([-16.])}
+
     
     if not geometry.startswith('boids'):
         # 2D shader case
@@ -505,24 +447,13 @@ def get_render(camera_pos, shader_time, samples=None, nsamples=1, shader_name='z
         tensor_x2 = tf.expand_dims(tf.expand_dims(shader_time, axis=1), axis=2) * tf.cast(tf.fill(tf.shape(xv), 1.0), dtype)
 
         if samples is None:
-            #print("creating random samples")
-            if stratified_sample_higher_res:
-                sample1_int = tf.random_uniform(tf.shape(xv), minval=0, maxval=2, dtype=tf.int32)
-                sample2_int = -tf.random_uniform(tf.shape(xv), minval=0, maxval=2, dtype=tf.int32)
-                sample1 = tf.cast(sample1_int, dtype) * 0.5
-                sample2 = tf.cast(sample2_int, dtype) * 0.5
-                slicing = tf.stack([1 + tf.cast(2 * yv_orig, tf.int32) + sample2_int, 2 * tf.cast(xv_orig, tf.int32) + sample1_int], 3)
-                samples_int[0] = slicing
-            elif not same_sample_all_pix:
+            if not same_sample_all_pix:
                 sample1 = tf.random_normal(tf.shape(xv), dtype=dtype)
                 sample2 = tf.random_normal(tf.shape(xv), dtype=dtype)
-                sample3 = tf.random_normal(tf.shape(xv), dtype=dtype)
             else:
                 sample1 = tf.fill(tf.shape(xv), tf.random_normal((), dtype=dtype))
                 sample2 = tf.fill(tf.shape(xv), tf.random_normal((), dtype=dtype))
-                sample3 = tf.fill(tf.shape(xv), tf.random_normal((), dtype=dtype))
         else:
-            sample3 = 0.0
             # the assumption here is batch_size = 1
             if isinstance(samples[0], numpy.ndarray) and isinstance(samples[1], numpy.ndarray):
                 sample1 = tf.constant(samples[0], dtype=dtype)
@@ -542,29 +473,18 @@ def get_render(camera_pos, shader_time, samples=None, nsamples=1, shader_name='z
                 size_slice = [nsamples, int(h_offset), int(w_offset)]
                 sample1 = tf.slice(sample1, start_slice, size_slice)
                 sample2 = tf.slice(sample2, start_slice, size_slice)
-            #if dtype == tf.float64:
-            #    sample1 = samples[0].astype(np.float64)
-            #    sample2 = samples[1].astype(np.float64)
 
         if render_sigma is None:
-            render_sigma = [0.5, 0.5, t_sigma]
+            render_sigma = [0.5, 0.5, 0]
         print('render_sigma:', render_sigma)
 
         if not zero_samples:
-            #print("using random samples")
 
             if (render_fix_spatial_sample or render_zero_spatial_sample) and spatial_samples is not None:
-                #print("fix spatial samples")
                 sample1 = tf.constant(spatial_samples[0], dtype=dtype)
                 sample2 = tf.constant(spatial_samples[1], dtype=dtype)
-            if render_fix_temporal_sample and temporal_samples is not None:
-                #print("fix temporal samples")
-                sample3 = tf.constant(temporal_samples[0], dtype=dtype)
-
-            if not stratified_sample_higher_res:
-                vector3 = [tensor_x0 + render_sigma[0] * sample1, tensor_x1 + render_sigma[1] * sample2, tensor_x2]
-            else:
-                vector3 = [tensor_x0 + sample1, tensor_x1 + sample2, tensor_x2]
+            vector3 = [tensor_x0 + render_sigma[0] * sample1, tensor_x1 + render_sigma[1] * sample2, tensor_x2]
+            
             
         else:
             vector3 = [tensor_x0, tensor_x1, tensor_x2]
@@ -576,10 +496,7 @@ def get_render(camera_pos, shader_time, samples=None, nsamples=1, shader_name='z
         f_log_intermediate[1] = camera_pos
     else:
         vector3 = [texture_maps, shader_time, tf.tile(tf.expand_dims(tf.cast(tf.range(n_boids), dtype), 0), [nsamples, 1])]
-    get_shader(vector3, f_log_intermediate, f_log_intermediate_subset, camera_pos, features_len, manual_features_len, shader_name=shader_name, color_inds=color_inds, vec_output=vec_output, compiler_module=compiler_module, geometry=geometry, debug=debug, extra_args=extra_args, render_g=render_g, manual_features_only=manual_features_only, aux_plus_manual_features=aux_plus_manual_features, fov=fov, features_len_add=features_len_add, manual_depth_offset=manual_depth_offset, additional_features=additional_features, texture_maps=texture_maps, n_boids=n_boids, input_feature_pl=input_feature_pl, input_to_shader=input_to_shader)
-
-    # TODO: potential bug here
-    # what to put if zero_samples = True
+    get_shader(vector3, f_log_intermediate, f_log_intermediate_subset, camera_pos, features_len, manual_features_len, shader_name=shader_name, color_inds=color_inds, vec_output=vec_output, compiler_module=compiler_module, geometry=geometry, debug=debug, extra_args=extra_args, manual_features_only=manual_features_only, aux_plus_manual_features=aux_plus_manual_features, fov=fov, features_len_add=features_len_add, manual_depth_offset=manual_depth_offset, additional_features=additional_features, texture_maps=texture_maps, n_boids=n_boids, input_to_shader=input_to_shader)
     
     if finite_diff:
         sample1 = tf.tile(sample1, [int(camera_pos.shape[1]), 1, 1])
@@ -601,13 +518,13 @@ def get_render(camera_pos, shader_time, samples=None, nsamples=1, shader_name='z
     else:
         return f_log_intermediate
 
-def get_shader(x, f_log_intermediate, f_log_intermediate_subset, camera_pos, features_len, manual_features_len, shader_name='zigzag', color_inds=None, vec_output=None, compiler_module=None, geometry='plane', debug=[], extra_args=[None], render_g=False, manual_features_only=False, aux_plus_manual_features=False, fov='regular', features_len_add=7, manual_depth_offset=1, additional_features=True, texture_maps=[], n_boids=40, input_feature_pl=[], input_to_shader=[]):
+def get_shader(x, f_log_intermediate, f_log_intermediate_subset, camera_pos, features_len, manual_features_len, shader_name='zigzag', color_inds=None, vec_output=None, compiler_module=None, geometry='plane', debug=[], extra_args=[None], manual_features_only=False, aux_plus_manual_features=False, fov='regular', features_len_add=7, manual_depth_offset=1, additional_features=True, texture_maps=[], n_boids=40, input_to_shader=[]):
     assert compiler_module is not None
     features_dt = []
 
     input_pl_to_features = []
     
-    features = get_features(x, camera_pos, geometry=geometry, debug=debug, extra_args=extra_args, fov=fov, features_dt=features_dt, n_boids=n_boids, input_feature_pl=input_pl_to_features)
+    features = get_features(x, camera_pos, geometry=geometry, debug=debug, extra_args=extra_args, fov=fov, features_dt=features_dt, n_boids=n_boids)
     
     if vec_output is None:
         vec_output = [None] * 3
@@ -621,10 +538,8 @@ def get_shader(x, f_log_intermediate, f_log_intermediate_subset, camera_pos, fea
     with tf.variable_scope("auxiliary"):
 
         if geometry not in ['none', 'texture', 'texture_approximate_10f', 'boids', 'boids_coarse'] and additional_features:
-            if not render_g:
-                h = 1e-4
-            else:
-                h = 1e-8
+            h = 1e-4
+
             if geometry == 'plane':
                 u_ind = 1
                 v_ind = 2
@@ -664,37 +579,15 @@ def get_shader(x, f_log_intermediate, f_log_intermediate_subset, camera_pos, fea
             
     if len(debug) > 0:
         vec_output[0] = debug[0]
-    if not render_g:
-        if texture_maps != []:
-            compiler_module.f(features, f_log_intermediate, vec_output, f_log_intermediate_subset, texture_maps=texture_maps)
-        else:
-            if len(input_feature_pl) > 0:
-                compiler_module.f(features, f_log_intermediate, vec_output, f_log_intermediate_subset, trace_pl=input_feature_pl)
-            else:
-                compiler_module.f(features, f_log_intermediate, vec_output, f_log_intermediate_subset)
+    if texture_maps != []:
+        compiler_module.f(features, f_log_intermediate, vec_output, f_log_intermediate_subset, texture_maps=texture_maps)
     else:
-        assert geometry not in ['none', 'texture', 'texture_approximate_10f']
-        sigma = [None] * len(features)
-        for i in range(len(features)):
-            variance = (tf.square((features_pos_x[i] - features[i]) / h) * 0.25 + tf.square(numpy.array(features_pos_y[i] - features[i]) / h) * 0.25)
-            sigma[i] = tf.sqrt(variance)
-            sigma[i] = tf.where(tf.is_nan(sigma[i]), tf.zeros_like(sigma[i]), sigma[i])
-        # workaround for bug in shader compiler
-        if geometry == 'plane':
-            sigma[7] = 0.0
-        global dtype
-        dtype = tf.float32
-        for i in range(len(features)):
-            if isinstance(features[i], tf.Tensor):
-                features[i] = tf.cast(features[i], dtype)
-            if isinstance(sigma[i], tf.Tensor):
-                sigma[i] = tf.cast(sigma[i], dtype)
+        compiler_module.f(features, f_log_intermediate, vec_output, f_log_intermediate_subset)
 
-        compiler_module.g(features, vec_output, sigma)
 
     return
 
-def get_features(x, camera_pos, geometry='plane', debug=[], extra_args=[None], fov='regular', features_dt=[], n_boids=40, input_feature_pl=[]):
+def get_features(x, camera_pos, geometry='plane', debug=[], extra_args=[None], fov='regular', features_dt=[], n_boids=40):
     if geometry.startswith('boids'):
         # 1D simulation case
         if geometry == 'boids':
@@ -869,13 +762,12 @@ def build_vgg(input, output_nc=3, channels=[]):
     net = slim.conv2d(net, 1, [1, 1], activation_fn=lrelu, scope='out')
     return net
         
-def build(input, ini_id=True, regularizer_scale=0.0, final_layer_channels=-1, identity_initialize=False, output_nc=3):
-    regularizer = None
+def build(input, ini_id=True, final_layer_channels=-1, identity_initialize=False, output_nc=3):
 
     if ini_id or identity_initialize:
-        net=slim.conv2d(input,actual_conv_channel,[3,3],rate=1,activation_fn=lrelu,weights_initializer=identity_initializer(allow_map_to_less=True),scope='g_conv1',weights_regularizer=regularizer, padding=conv_padding)
+        net=slim.conv2d(input,actual_conv_channel,[3,3],rate=1,activation_fn=lrelu,weights_initializer=identity_initializer(allow_map_to_less=True),scope='g_conv1', padding=conv_padding)
     else:
-        net=slim.conv2d(input,actual_conv_channel,[3,3],rate=1,activation_fn=lrelu,scope='g_conv1',weights_regularizer=regularizer, padding=conv_padding)
+        net=slim.conv2d(input,actual_conv_channel,[3,3],rate=1,activation_fn=lrelu,scope='g_conv1',padding=conv_padding)
 
     dilation_schedule = [2, 4, 8, 16, 32, 64]
     for ind in range(len(dilation_schedule)):
@@ -888,20 +780,19 @@ def build(input, ini_id=True, regularizer_scale=0.0, final_layer_channels=-1, id
                 dilation_rate = dilation_threshold
             elif dilation_remove_layer:
                 continue
-        net=slim.conv2d(net,actual_conv_channel,[3,3],rate=dilation_rate,activation_fn=lrelu,weights_initializer=identity_initializer(),scope='g_conv'+str(conv_ind),weights_regularizer=regularizer, padding=conv_padding)
+        net=slim.conv2d(net,actual_conv_channel,[3,3],rate=dilation_rate,activation_fn=lrelu,weights_initializer=identity_initializer(),scope='g_conv'+str(conv_ind),padding=conv_padding)
 
-    net=slim.conv2d(net,actual_conv_channel,[3,3],rate=1,activation_fn=lrelu,weights_initializer=identity_initializer(),scope='g_conv9',weights_regularizer=regularizer, padding=conv_padding)
+    net=slim.conv2d(net,actual_conv_channel,[3,3],rate=1,activation_fn=lrelu,weights_initializer=identity_initializer(),scope='g_conv9', padding=conv_padding)
     if final_layer_channels > 0:
         if actual_conv_channel > final_layer_channels and (not identity_initialize):
-            net = slim.conv2d(net, final_layer_channels, [1, 1], rate=1, activation_fn=lrelu, scope='final_0', weights_regularizer=regularizer, padding=conv_padding)
+            net = slim.conv2d(net, final_layer_channels, [1, 1], rate=1, activation_fn=lrelu, scope='final_0', padding=conv_padding)
             nlayers = [1, 2]
         else:
             nlayers = [0, 1, 2]
         for nlayer in nlayers:
-            net = slim.conv2d(net, final_layer_channels, [1, 1], rate=1, activation_fn=lrelu, weights_initializer=identity_initializer(allow_map_to_less=True), scope='final_'+str(nlayer),weights_regularizer=regularizer, padding=conv_padding)
+            net = slim.conv2d(net, final_layer_channels, [1, 1], rate=1, activation_fn=lrelu, weights_initializer=identity_initializer(allow_map_to_less=True), scope='final_'+str(nlayer), padding=conv_padding)
 
-    #print('identity last layer?', identity_initialize and identity_output_layer)
-    net=slim.conv2d(net,output_nc,[1,1],rate=1,activation_fn=None,scope='g_conv_last',weights_regularizer=regularizer, weights_initializer=identity_initializer(allow_map_to_less=True) if (identity_initialize and identity_output_layer) else tf.contrib.layers.xavier_initializer(), padding=conv_padding)
+    net=slim.conv2d(net,output_nc,[1,1],rate=1,activation_fn=None,scope='g_conv_last', weights_initializer=identity_initializer(allow_map_to_less=True) if (identity_initialize and identity_output_layer) else tf.contrib.layers.xavier_initializer(), padding=conv_padding)
     return net
 
 def prepare_data_root(dataroot, additional_input=False):
@@ -956,11 +847,8 @@ def generate_parser():
     parser.add_argument('--finetune', dest='finetune', action='store_true', help='fine tune on a previously tuned network')
     parser.add_argument('--orig_name', dest='orig_name', default='', help='name of original task that is fine tuned on')
     parser.add_argument('--epoch', dest='epoch', type=int, default=200, help='number of epochs to train, seperated by comma')
-    parser.add_argument('--debug_mode', dest='debug_mode', action='store_true', help='debug mode')
     parser.add_argument('--use_queue', dest='use_queue', action='store_true', help='whether to use queue instead of feed_dict ( when inputs are too large)')
     parser.add_argument('--no_preload', dest='preload', action='store_false', help='whether to preload data')
-    parser.add_argument('--L1_regularizer_scale', dest='regularizer_scale', type=float, default=0.0, help='scale for L1 regularizer')
-    parser.add_argument('--L2_regularizer_scale', dest='L2_regularizer_scale', type=float, default=0.0, help='scale for L2 regularizer')
     parser.add_argument('--test_training', dest='test_training', action='store_true', help='use training data for testing purpose')
     parser.add_argument('--input_w', dest='input_w', type=int, default=960, help='supplemental information needed when using queue to read binary file')
     parser.add_argument('--input_h', dest='input_h', type=int, default=640, help='supplemental information needed when using queue to read binary file')
@@ -991,7 +879,6 @@ def generate_parser():
     parser.add_argument('--render_t', dest='render_t', default='render_t.npy', help='used to render output')
     parser.add_argument('--render_temporal_texture', dest='render_temporal_texture', default='', help='used to provide initial temporal texture buffer')
     parser.add_argument('--train_res', dest='train_res', action='store_true', help='if specified, out_img = in_noisy_img + out_network')
-    parser.add_argument('--no_intersection', dest='intersection', action='store_false', help='if specified, do not include geometry intersection computation in intermediate variables')
     parser.add_argument('--geometry', dest='geometry', default='plane', help='geometry of shader')
     parser.add_argument('--RGB_norm', dest='RGB_norm', type=int, default=2, help='specify which p-norm to use for RGB loss')
     parser.add_argument('--mean_estimator_memory_efficient', dest='mean_estimator_memory_efficient', action='store_true', help='if specified, use a memory efficient way to calculate mean estimator, but may not be accurate in time')
@@ -1008,25 +895,14 @@ def generate_parser():
     parser.add_argument('--first_n_no_last', dest='first_n_no_last', type=int, default=-1, help='log first n iterations')
     parser.add_argument('--mean_var_only', dest='mean_var_only', action='store_true', help='if flagged, use only mean and variance as loop statistic')
     parser.add_argument('--render_fix_spatial_sample', dest='render_fix_spatial_sample', action='store_true', help='if specified, fix spatial sample at rendering')
-    parser.add_argument('--render_fix_temporal_sample', dest='render_fix_temporal_sample', action='store_true', help='if specified, fix temporal sample at rendering')
     parser.add_argument('--render_zero_spatial_sample', dest='render_zero_spatial_sample', action='store_true', help='if specified, use zero spatial sample')
     parser.add_argument('--render_fov', dest='render_fov', default='', help='if specified, can overwrite fov at render time')
     parser.add_argument('--every_nth', dest='every_nth', type=int, default=-1, help='log every nth var')
-    parser.add_argument('--one_hop_parent', dest='one_hop_parent', action='store_true', help='if specified, skip log var if any of its parent is logged')
     parser.add_argument('--feature_sparsity_vec', dest='feature_sparsity_vec', action='store_true', help='if specified, multiply a vector to the features to potentially sparsely select channels')
-    parser.add_argument('--zero_out_sparsity_vec', dest='zero_out_sparsity_vec', action='store_true', help='if specified, set small entries in sparsity vec to zero at inference time')
     parser.add_argument('--feature_sparsity_scale', dest='feature_sparsity_scale', type=float, default=1.0, help='multiply this weight before sparsity_loss')
-    parser.add_argument('--feature_sparsity_schedule', dest='feature_sparsity_schedule', action='store_true', help='if true, use schedule the scale for feature sparsity to be linearly changing for every epoch')
-    parser.add_argument('--feature_sparsity_schedule_start', dest='feature_sparsity_schedule_start', type=float, default=1.0, help='if use schedule for sparsity scale, start with this value at epoch 0')
-    parser.add_argument('--feature_sparsity_schedule_end', dest='feature_sparsity_schedule_end', type=float, default=1.0, help='if use schedule for sparsity scale, end with this value for the last epoch')
-    parser.add_argument('--logscale_schedule', dest='logscale_schedule', action='store_true', help='if specified, use logscale to schedule sparsity weights')
-    parser.add_argument('--use_sparsity_pl', dest='use_sparsity_pl', action='store_true', help='if specified, use a placeholder to define sparsity nonzero entries')
-    parser.add_argument('--sparsity_start_freeze', dest='sparsity_start_freeze', type=int, default=0, help='specifies the number of epochs that the sparsity schedule is fixed at the initial value (0)')
-    parser.add_argument('--sparsity_end_freeze', dest='sparsity_end_freeze', type=int, default=0, help='spcifies the number of epochs that the sparsity schedule is fixed at the final value')
     parser.add_argument('--sparsity_vec_histogram', dest='sparsity_vec_histogram', action='store_true', help='if specified, compute the histogram of sparsity vec weights for the stored model')
     parser.add_argument('--sparsity_target_channel', dest='sparsity_target_channel', type=int, default=100, help='specifies the target nonzero channel entries for sparsity vec')
     parser.add_argument('--random_target_channel', dest='random_target_channel', action='store_true', help='if specified, randomly select target number of channels, used as a baseline for sparsity experiments')
-    parser.add_argument('--schedule_scale_after_freeze', dest='schedule_scale_after_freeze', action='store_true', help='if specified, weight scale is changed only after phase 1 (changing nonconvexity) is finished and phase 2 (maximum nonconvexity fixed) is started')
     parser.add_argument('--finetune_epoch', dest='finetune_epoch', type=int, default=-1, help='if specified, use checkpoint from specified epoch for finetune start point')
     parser.add_argument('--every_nth_stratified', dest='every_nth_stratified', action='store_true', help='if specified, do stratified sampling for every nth traces')
     parser.add_argument('--aux_plus_manual_features', dest='aux_plus_manual_features', action='store_true', help='if specified, use RGB+aux+manual features')
@@ -1038,9 +914,6 @@ def generate_parser():
     parser.add_argument('--crop_w', dest='crop_w', type=int, default=-1, help='if specified, crop features / imgs on width dimension upon specified ind')
     parser.add_argument('--crop_h', dest='crop_h', type=int, default=-1, help='if specified, crop features / imgs on height dimension upon specified ind')
     parser.add_argument('--no_noise_feature', dest='no_noise_feature', action='store_true', help='if specified, do not include noise as additional features during training, will override include_noise_feature')
-    parser.add_argument('--perceptual_loss', dest='perceptual_loss', action='store_true',help='if specified, use perceptual loss as well as L2 loss')
-    parser.add_argument('--perceptual_loss_term', dest='perceptual_loss_term', default='conv1_1', help='specify to use which layer in vgg16 as perceptual loss')
-    parser.add_argument('--perceptual_loss_scale', dest='perceptual_loss_scale', type=float, default=0.0001, help='used to scale perceptual loss')
     parser.add_argument('--relax_clipping', dest='relax_clipping', action='store_true', help='if specified relax the condition of clipping features from 0-1 to -2-2')
     parser.add_argument('--train_with_zero_samples', dest='train_with_zero_samples', action='store_true', help='if specified, only use center of pixel for training')
     parser.add_argument('--tile_only', dest='tile_only', action='store_true', help='if specified, render only tiles (part of an entire image) according to tile_start')
@@ -1054,13 +927,10 @@ def generate_parser():
     parser.add_argument('--analyze_channel', dest='analyze_channel', action='store_true', help='in this mode, analyze and visualize contribution of each channel')
     parser.add_argument('--bad_example_base_dir', dest='bad_example_base_dir', default='', help='base dir for bad examples(RGB+Aux) in analyze_channel mode')
     parser.add_argument('--analyze_current_only', dest='analyze_current_only', action='store_true', help='in this mode, analyze only g_current (mostly because at lower res to resolve OOM)')
-    parser.add_argument('--stratified_sample_higher_res', dest='stratified_sample_higher_res', action='store_true', help='in this mode, learn from a gt that is stratified sample from a higher res gt')
     parser.add_argument('--save_intermediate_epoch', dest='save_intermediate_epoch', action='store_true', help='if true, save all intermediate epochs')
     parser.add_argument('--texture_maps', dest='texture_maps', default='', help='if not empty, retrieve texture map from the file')
     parser.add_argument('--additional_input', dest='additional_input', action='store_true', help='if true, find additional input features from train/test_add')
     parser.add_argument('--partial_trace', dest='partial_trace', type=float, default=1.0, help='if less than 1, only record the first 100x percent of the trace wehre x = partial_trace')
-    parser.add_argument('--use_lstm', dest='use_lstm', action='store_true', help='if specified, use lstm to process raw feature')
-    parser.add_argument('--lstm_nfeatures_per_group', dest='lstm_nfeatures_per_group', type=int, default=1, help='specifies how many features processed per timestamp by LSTM')
     parser.add_argument('--patch_gan_loss', dest='patch_gan_loss', action='store_true', help='if specified, use a patch gan loss together with existing loss')
     parser.add_argument('--no_spatial_GAN', dest='spatial_GAN', action='store_false', help='if sepcified, do not include spatial GAN. This option is only valid when patch_gan_loss is true, and train_temporal_seq is also true.')
     parser.add_argument('--ndf', dest='ndf', type=int, default=32, help='number of discriminator filters on first layer if using patch GAN loss')
@@ -1104,25 +974,17 @@ def generate_parser():
     parser.add_argument('--boids_single_step_metric', dest='boids_single_step_metric', action='store_true', help='if true, also compute single step l2 error on test set')
     parser.add_argument('--boids_seq_metric', dest='boids_seq_metric', action='store_true', help='if true, synthesize long sequences and compute error')
     parser.add_argument('--analyze_nn_discontinuity', dest='analyze_nn_discontinuity', action='store_true', help='if true, analyze the discontinuity in each conv layer (after lrelu activation)')
-    parser.add_argument('--optimize_input', dest='optimize_input', action='store_true', help='if true, do not use placeholder for input, use tf.Variable instead, also return session, optimizable varialbe and output node before rendering/training')
-    parser.add_argument('--boost_channels', dest='boost_channels', default='', help='if having indices seperated by comma, create a regularizer on the rest of the indices to decrease their weights (therefore boost the importance of listed indices)')
     parser.add_argument('--no_boost_ch_from_finetune', dest='boost_ch_from_finetune', action='store_false', help='if specified, remove sparsity_vec from saver')
-    parser.add_argument('--learn_loss_proxy', dest='learn_loss_proxy', action='store_true', help='if specified, instead of learning target gt image, learn the loss between the gt image to another input image instead')
-    parser.add_argument('--optimize_target_img', dest='optimize_target_img', action='store_true', help='if specified and if in learn_loss_proxy mode, optimize input parameters to approximate the target image')
     parser.add_argument('--target_img', dest='target_img', default='', help='name of target image file for optimization')
     parser.add_argument('--list_parameter_idx', dest='list_parameter_idx', action='store_true', help='if specified, list the names of all placeholder parameters and their corresponding indices (which can be used in command line to specify)')
     parser.add_argument('--loss_proxy_encourage_0', dest='loss_proxy_encourage_0', action='store_true', help='if specified, set a quater of the training target to be the same as reference, so that the model can correctly learn the loss should be 0 in those cases')
-    parser.add_argument('--proxy_loss_type', dest='proxy_loss_type', default='smoothed_l2', help='type of loss the proxy learns')
-    parser.add_argument('--augment_camera_periodic_range', dest='augment_camera_periodic_range', default='', help='if specified, during training will randomly augment camera position by either incrementing or decrementing the range')
     parser.add_argument('--model_arch', dest='model_arch', default='dilated', help='specified the architeture model uses')
     parser.add_argument('--collect_inference_tensor', dest='collect_inference_tensor', action='store_true', help='if specified, return pl and tensor that can be used for inference')
-    parser.add_argument('--optimize_nn_input_feature_space', dest='optimize_nn_input_feature_space', type=int, default=0, help='experiment mode')
     parser.add_argument('--render_no_video', dest='render_no_video', action='store_true', help='in this mode, render images only, do not generate video')
     parser.add_argument('--render_dirname', dest='render_dirname', default='render', help='directory used to store render result')
     parser.add_argument('--render_tile_start', dest='render_tile_start', default='', help='specifies the tile start for each rendering if render in test_training mode')
     parser.add_argument('--vgg_channels', dest='vgg_channels', default='', help='if specified, use these channel number to replace default vgg network')
     parser.add_argument('--feature_reduction_ch', dest='feature_reduction_ch', type=int, default=-1, help='specifies dimensionality after feature reduction channel. By default it should be the same as following initial layer or dilation layers, but we might want to change the dimensionality larger for fair RGBx comparison')
-    parser.add_argument('--feed_dict_optimize_input', dest='feed_dict_optimize_input', action='store_true', help='if specified, create pl for optimize input mode, instead of variable')
     parser.add_argument('--finite_diff', dest='finite_diff', action='store_true', help='if specified, create 2 extra copy of camera_pos and shader_time in the batch dimension that can be used to compute finite difference later')
     parser.add_argument('--collect_validate_loss', dest='collect_validate_loss', action='store_true', help='if true, collect validation loss (and training score) and write to tensorboard')
     parser.add_argument('--alt_ckpt_base_dir', dest='alt_ckpt_base_dir', default='', help='if specified, also find checkpoints here')
@@ -1147,7 +1009,6 @@ def generate_parser():
     parser.set_defaults(is_train=False)
     parser.set_defaults(use_batch=False)
     parser.set_defaults(finetune=False)
-    parser.set_defaults(debug_mode=False)
     parser.set_defaults(use_queue=False)
     parser.set_defaults(preload=True)
     parser.set_defaults(test_training=False)
@@ -1164,31 +1025,22 @@ def generate_parser():
     parser.set_defaults(identity_output_layer=True)
     parser.set_defaults(less_aggresive_ini=False)
     parser.set_defaults(train_res=False)
-    parser.set_defaults(intersection=True)
     parser.set_defaults(mean_estimator_memory_efficient=False)
     parser.set_defaults(tiled_training=False)
     parser.set_defaults(first_last_only=False)
     parser.set_defaults(last_only=False)
     parser.set_defaults(render_fix_spatial_sample=False)
-    parser.set_defaults(render_fix_temporal_sample=False)
     parser.set_defaults(render_zero_spatial_sample=False)
     parser.set_defaults(mean_var_only=False)
-    parser.set_defaults(one_hop_parent=False)
     parser.set_defaults(feature_sparsity_vec=False)
-    parser.set_defaults(zero_out_sparsity_vec=False)
-    parser.set_defaults(feature_sparsity_schedule=False)
-    parser.set_defaults(logscale_schedule=False)
-    parser.set_defaults(use_sparsity_pl=False)
     parser.set_defaults(sparsity_vec_histogram=False)
     parser.set_defaults(random_target_channel=False)
-    parser.set_defaults(schedule_scale_after_freeze=False)
     parser.set_defaults(every_nth_stratified=False)
     parser.set_defaults(aux_plus_manual_features=False)
     parser.set_defaults(use_manual_index=False)
     parser.set_defaults(additional_features=True)
     parser.set_defaults(include_noise_feature=False)
     parser.set_defaults(no_noise_feature=False)
-    parser.set_defaults(perceptual_loss=False)
     parser.set_defaults(relax_clipping=False)
     parser.set_defaults(preload_grad=False)
     parser.set_defaults(train_with_zero_samples=False)
@@ -1199,10 +1051,8 @@ def generate_parser():
     parser.set_defaults(same_sample_all_pix=False)
     parser.set_defaults(analyze_channel=False)
     parser.set_defaults(analyze_current_only=False)
-    parser.set_defaults(stratified_sample_higher_res=False)
     parser.set_defaults(save_intermediate_epoch=False)
     parser.set_defaults(additional_input=False)
-    parser.set_defaults(use_lstm=False)
     parser.set_defaults(patch_gan_loss=False)
     parser.set_defaults(discrim_use_trace=False)
     parser.set_defaults(discrim_trace_shared_weights=False)
@@ -1225,15 +1075,11 @@ def generate_parser():
     parser.set_defaults(boids_single_step_metric=False)
     parser.set_defaults(boids_seq_metric=False)
     parser.set_defaults(analyze_nn_discontinuity=False)
-    parser.set_defaults(optimize_input=False)
     parser.set_defaults(boost_ch_from_finetune=True)
-    parser.set_defaults(learn_loss_proxy=False)
-    parser.set_defaults(optimize_target_img=False)
     parser.set_defaults(list_parameter_idx=False)
     parser.set_defaults(loss_proxy_encourage_0=False)
     parser.set_defaults(collect_inference_tensor=False)
     parser.set_defaults(render_no_video=False)
-    parser.set_defaults(feed_dict_optimize_input=False)
     parser.set_defaults(finite_diff=False)
     parser.set_defaults(collect_validate_loss=False)
     parser.set_defaults(read_from_best_validation=False)
@@ -1258,7 +1104,6 @@ def main():
 def main_network(args):
 
 
-    # batch_size can work with 2, but OOM with 4
 
     if args.name == '':
         args.name = ''.join(random.choice(string.digits) for _ in range(5))
@@ -1373,19 +1218,6 @@ def main_network(args):
     
     render_sigma = [args.render_sigma, args.render_sigma, 0]
     
-    if args.augment_camera_periodic_range != '':
-        augment_camera_pos = True
-        camera_periodic_range = []
-        for val in args.augment_camera_periodic_range.split(','):
-            if val == 'pi':
-                camera_periodic_range.append(np.pi)
-            elif val == '2pi':
-                camera_periodic_range.append(2 * np.pi)
-            else:
-                camera_periodic_range.append(float(val))
-        camera_periodic_range = np.array(camera_periodic_range)
-    else:
-        augment_camera_pos = False
 
     if args.geometry == 'texture_approximate_10f':
         output_nc = 34
@@ -1401,29 +1233,11 @@ def main_network(args):
     else:
         output_pl_w = args.input_w
         output_pl_h = args.input_h
-    if args.stratified_sample_higher_res and args.is_train:
-        output_pl_w *= 2
-        output_pl_h *= 2
+
         
     target_pl_w = output_pl_w
     target_pl_h = output_pl_h
-        
-    if args.learn_loss_proxy and args.proxy_loss_type == 'from_data':
-        if args.is_train:
-            gt_loss_train = np.load(os.path.join(args.dataroot, 'train_loss.npy'))
-            gt_loss_val = np.load(os.path.join(args.dataroot, 'validate_loss.npy'))
-            
-        else:
-            if args.test_training:
-                # try not to use test_training mode since enumerate all training combination can be super slow...
-                gt_loss_train = np.load(os.path.join(args.dataroot, 'train_loss.npy'))
-            else:
-                gt_loss_train = np.load(os.path.join(args.dataroot, 'test_loss.npy'))
-        
-        output_pl_w = gt_loss_train.shape[3]
-        output_pl_h = gt_loss_train.shape[2]
-        args.use_validation = True
-        output_nc = 1
+
         
     if args.render_only:
         args.use_queue = False
@@ -1483,12 +1297,7 @@ def main_network(args):
     
     ncameras = None
     if not args.shader_name.startswith('boids'):
-        if args.learn_loss_proxy and args.proxy_loss_type == 'from_data':
-            # if loss proxy gt is read from file, we will enumearate each possible pair for one epoch
-            nexamples = time_vals.shape[0] ** 2
-            ncameras = time_vals.shape[0]
-        else:
-            nexamples = time_vals.shape[0]
+        nexamples = time_vals.shape[0]
     else:
         
         #min_sample_time = 2
@@ -1549,15 +1358,7 @@ def main_network(args):
                 output_pl = tf.placeholder(tf.float32, shape=[None, args.n_boids, 4])
         else:
             output_pl = tf.placeholder(tf.float32, shape=[None, output_pl_h, output_pl_w, output_nc])
-            
-        if args.learn_loss_proxy:
-            if args.optimize_input:
-                target_pl = np.expand_dims(np.float32(cv2.imread(args.target_img, -1)) / 255.0, 0)
-                if args.finite_diff:
-                    target_pl = np.tile(target_pl, [8, 1, 1, 1])
-            else:
-                target_pl = tf.placeholder(tf.float32, shape=[None, target_pl_h, target_pl_w, target_nc])
-            output_nc = 1
+
         
         if args.train_temporal_seq:
             if not args.geometry.startswith('boids'):
@@ -1703,18 +1504,14 @@ def main_network(args):
         
         if args.shader_name in ['fluid_approximate_3pass_10f', 'fluid_approximate']:
             dataset = dataset.map(lambda x: tf.contrib.eager.py_func(func=load_image, inp=[x], Tout=(tf.int32, dtype, dtype, dtype, dtype)), num_parallel_calls=8)
-            # TODO: total hack, should generalize later
             shapes = (tf.TensorShape([]), tf.TensorShape([output_pl_h, output_pl_w, 34]), tf.TensorShape([7, output_pl_h, output_pl_w]), tf.TensorShape([33]), tf.TensorShape([]))
         elif args.shader_name in ['fluid_approximate_3pass_no_mouse_perlin', 'fluid_approximate_sin']:
             dataset = dataset.map(lambda x: tf.contrib.eager.py_func(func=load_image, inp=[x], Tout=(tf.int32, dtype, dtype, dtype, dtype, dtype)), num_parallel_calls=8)
-            # TODO: total hack, should generalize later
             shapes = (tf.TensorShape([]), tf.TensorShape([output_pl_h, output_pl_w, 34]), tf.TensorShape([7, output_pl_h, output_pl_w]), tf.TensorShape([33]), tf.TensorShape([]), tf.TensorShape([output_pl_h, output_pl_w, 6]))
-        #elif args.shader_name.startswith('trippy') or args.shader_name.startswith('mandelbulb'):
         else:
             dataset = dataset.map(lambda x: tf.contrib.eager.py_func(func=load_image, inp=[x], Tout=(tf.int32, dtype, dtype, dtype, dtype)), num_parallel_calls=8)
             shapes = (tf.TensorShape([]), tf.TensorShape([output_pl_h, output_pl_w, output_nc * ngts]), tf.TensorShape([6]), tf.TensorShape([ngts]), tf.TensorShape([2]))
-        #else:
-        #    raise
+
             
         dataset = dataset.apply(tf.contrib.data.assert_element_shape(shapes))
             
@@ -1734,7 +1531,6 @@ def main_network(args):
             texture_maps = texture_maps[0]
             camera_pos = tf.expand_dims(camera_pos[0], axis=1)
             shader_time = tf.expand_dims(shader_time[0], axis=0)
-        #elif args.shader_name.startswith('trippy') or args.shader_name.startswith('mandelbulb'):
         else:
             current_ind, output_pl, camera_pos, shader_time, tile_start = iterator.get_next()
             camera_pos = tf.tile(tf.expand_dims(camera_pos[0], axis=1), [1, ngts])
@@ -1742,9 +1538,7 @@ def main_network(args):
             shader_time = shader_time[0]
             h_start = tf.tile(tf.expand_dims(tile_start[0, 0] - padding_offset / 2, axis=0), (ngts,))
             w_start = tf.tile(tf.expand_dims(tile_start[0, 1] - padding_offset / 2, axis=0), (ngts,))
-        #else:
-        #    raise
-        
+
         
 
     camera_pos_var = None
@@ -1754,70 +1548,19 @@ def main_network(args):
         camera_pos = None
         if not args.shader_name.startswith('boids'):
             if args.geometry != 'texture_approximate_10f':
-                #camera_pos = tf.placeholder(dtype, shape=[6, args.batch_size])
                 camera_pos_len = 6
             else:
-                #camera_pos = tf.placeholder(dtype, shape=[33, args.batch_size])
                 camera_pos_len = 33
-            if args.optimize_input:
-                # normalize camera pos and shader time according to training data
-                camera_pos_training_pool = numpy.load(os.path.join(args.dataroot, 'train.npy'))
-                camera_pos_bias = np.expand_dims(-np.min(camera_pos_training_pool, 0), 1)
 
-                camera_pos_scale_raw = np.max(camera_pos_training_pool, 0) - np.min(camera_pos_training_pool, 0)
-                camera_pos_scale = numpy.ones(camera_pos_scale_raw.shape)
-                camera_pos_scale[camera_pos_scale_raw.nonzero()] = camera_pos_scale_raw[camera_pos_scale_raw.nonzero()]
-                camera_pos_scale = np.expand_dims(camera_pos_scale, 1)
-
-                shader_time_training_pool = numpy.load(os.path.join(args.dataroot, 'train_time.npy'))
-                shader_time_bias = -numpy.min(shader_time_training_pool)
-                shader_time_scale = np.max(shader_time_training_pool) + shader_time_bias
-                if shader_time_scale == 0:
-                    shader_time_scale = 1
-
-                #camera_pos_var = tf.Variable(np.zeros([camera_pos_len, args.batch_size]), dtype=dtype)
-                if args.feed_dict_optimize_input:
-                    camera_pos_var = tf.placeholder(dtype, shape=[camera_pos_len, args.batch_size])
-                    shader_time_var = tf.placeholder(dtype, shape=args.batch_size)
-                else:
-                    camera_pos_var = tf.Variable((camera_pos_training_pool[:args.batch_size].transpose() + camera_pos_bias) / camera_pos_scale, dtype=dtype)
-                    shader_time_var = tf.Variable(np.zeros(args.batch_size), dtype=dtype)
-
-
-                if args.finite_diff:
-                    finite_h = 1e-2
-                    # for computational efficientcy we only add 7 more examples, finite diff will be computed as
-                    # (f(x + h) - f(x)) / h
-
-                    shader_time_finite = tf.concat((tf.tile(shader_time_var, [7]), shader_time_var + finite_h), 0)
-
-                    camera_stacks = [camera_pos_var]                            
-                    current_finite = np.zeros(6)    
-                    for i in range(6):
-                        current_finite[:] = 0
-                        current_finite[i] = finite_h
-                        camera_stacks.append(camera_pos_var + np.expand_dims(current_finite, 1))
-                    camera_stacks.append(camera_pos_var)
-
-                    camera_pos_finite = tf.concat(camera_stacks, 1)
-                else:
-                    shader_time_finite = shader_time_var
-                    camera_pos_finite = camera_pos_var
-
-                camera_pos = camera_pos_finite * camera_pos_scale - camera_pos_bias
-                shader_time = shader_time_finite * shader_time_scale - shader_time_bias
-            else:
-                camera_pos = tf.placeholder(dtype, shape=[camera_pos_len, args.batch_size])
-                shader_time = tf.placeholder(dtype, shape=args.batch_size)
+            camera_pos = tf.placeholder(dtype, shape=[camera_pos_len, args.batch_size])
+            shader_time = tf.placeholder(dtype, shape=args.batch_size)
         else:
             shader_time = tf.placeholder(dtype, shape=args.batch_size)
     if args.additional_input:
         additional_input_pl = tf.placeholder(dtype, shape=[None, output_pl_h, output_pl_w, 1])
 
     with tf.variable_scope("shader"):
-        if args.input_nc == 266:
-            output_type = 'all'
-        elif args.mean_estimator:
+        if args.mean_estimator:
             output_type = 'rgb'
         elif args.input_nc == 3:
             output_type = 'bgr'
@@ -1836,13 +1579,11 @@ def main_network(args):
         else:
             shader_samples = args.batch_size
 
-        #print("sample count", shader_samples)
-        feature_w = []
         color_inds = []
         texture_inds = []
         color_scale = []
         if args.tiled_training or args.tile_only:
-            if args.optimize_input or args.collect_inference_tensor:
+            if args.collect_inference_tensor:
                 h_start = tf.constant([- padding_offset / 2])
                 w_start = tf.constant([- padding_offset / 2])
             elif not args.use_queue:
@@ -1877,15 +1618,12 @@ def main_network(args):
         #    zero_samples = True
 
         spatial_samples = None
-        temporal_samples = None
         if args.render_fix_spatial_sample:
             #print("generate random fixed spatial sample")
             spatial_samples = [numpy.random.normal(size=(1, h_offset, w_offset)), numpy.random.normal(size=(1, h_offset, w_offset))]
         elif args.render_zero_spatial_sample:
             #print("generate zero spatial sample")
             spatial_samples = [numpy.zeros((1, h_offset, w_offset)), numpy.zeros((1, h_offset, w_offset))]
-        if args.render_fix_temporal_sample:
-            temporal_samples = [numpy.random.normal(size=(1, h_offset, w_offset))]
 
         target_idx = []
         target_idx_file = None
@@ -1904,19 +1642,10 @@ def main_network(args):
 
         samples_int = [None]
         
-        input_feature_pl = []
         input_to_shader = []
         trace_features = []
-        input_feature_scale_bias = []
-        if args.optimize_nn_input_feature_space > 0:
-            for i in range(args.optimize_nn_input_feature_space):
-                input_feature_pl.append(tf.Variable(np.random.rand(args.batch_size, h_offset, w_offset), dtype=dtype))
 
-        #if args.geometry.startswith('boids'):
-        if False:
-            debug = [{texture_maps: camera_pos_vals[:args.batch_size], shader_time: np.ones(args.batch_size)}]
-        else:
-            debug = [[camera_pos_var, shader_time_var] + input_feature_pl]
+        debug = [[camera_pos_var, shader_time_var]]
             
         
 
@@ -1924,7 +1653,7 @@ def main_network(args):
         def generate_input_to_network_wrapper():
             def func(texture_maps_input):
             
-                return get_tensors(args.dataroot, args.name, camera_pos, shader_time, output_type, shader_samples, shader_name=args.shader_name, geometry=args.geometry, feature_w=feature_w, color_inds=color_inds, intersection=args.intersection, manual_features_only=args.manual_features_only, aux_plus_manual_features=args.aux_plus_manual_features, h_start=h_start, h_offset=h_offset, w_start=w_start, w_offset=w_offset, samples=feed_samples, fov=args.fov, first_last_only=args.first_last_only, last_only=args.last_only, subsample_loops=args.subsample_loops, last_n=args.last_n, first_n=args.first_n, first_n_no_last=args.first_n_no_last, mean_var_only=args.mean_var_only, zero_samples=zero_samples, render_fix_spatial_sample=args.render_fix_spatial_sample, render_fix_temporal_sample=args.render_fix_temporal_sample, render_zero_spatial_sample=args.render_zero_spatial_sample, spatial_samples=spatial_samples, temporal_samples=temporal_samples, every_nth=args.every_nth, every_nth_stratified=args.every_nth_stratified, one_hop_parent=args.one_hop_parent, target_idx=target_idx, use_manual_index=args.use_manual_index, manual_index_file=args.manual_index_file, additional_features=args.additional_features, ignore_last_n_scale=args.ignore_last_n_scale, include_noise_feature=args.include_noise_feature, crop_h=args.crop_h, crop_w=args.crop_w, no_noise_feature=args.no_noise_feature, relax_clipping=args.relax_clipping, render_sigma=render_sigma, same_sample_all_pix=args.same_sample_all_pix, stratified_sample_higher_res=args.stratified_sample_higher_res, samples_int=samples_int, texture_maps=texture_maps_input, partial_trace=args.partial_trace, use_lstm=args.use_lstm, lstm_nfeatures_per_group=args.lstm_nfeatures_per_group, rotate=rotate, flip=flip, automatic_subsample=args.automatic_subsample, automate_raymarching_def=args.automate_raymarching_def, chron_order=args.chron_order, def_loop_log_last=args.def_loop_log_last, temporal_texture_buffer=args.temporal_texture_buffer, texture_inds=texture_inds, log_only_return_def_raymarching=args.log_only_return_def_raymarching, SELECT_FEATURE_THRE=args.SELECT_FEATURE_THRE, n_boids=args.n_boids, log_getitem=args.log_getitem, debug=debug, color_scale=color_scale, parallel_stack=not args.optimize_input, input_feature_pl=input_feature_pl, input_to_shader=input_to_shader, trace_features=trace_features, input_feature_scale_bias=input_feature_scale_bias, finite_diff=args.finite_diff, feature_normalize_lo_pct=args.feature_normalize_lo_pct, get_col_aux_inds=args.get_col_aux_inds, specified_ind=specified_ind, write_file=args.overwrite_option_file, alt_dir=args.test_output_dir, strict_clipping_inference=args.strict_clipping_inference, add_positional_encoding=args.add_positional_encoding, base_freq_x=args.base_freq_x, base_freq_y=args.base_freq_y, whitening=args.whitening, clamping=args.clamping)
+                return get_tensors(args.dataroot, args.name, camera_pos, shader_time, output_type, shader_samples, shader_name=args.shader_name, geometry=args.geometry, color_inds=color_inds, manual_features_only=args.manual_features_only, aux_plus_manual_features=args.aux_plus_manual_features, h_start=h_start, h_offset=h_offset, w_start=w_start, w_offset=w_offset, samples=feed_samples, fov=args.fov, first_last_only=args.first_last_only, last_only=args.last_only, subsample_loops=args.subsample_loops, last_n=args.last_n, first_n=args.first_n, first_n_no_last=args.first_n_no_last, mean_var_only=args.mean_var_only, zero_samples=zero_samples, render_fix_spatial_sample=args.render_fix_spatial_sample, render_zero_spatial_sample=args.render_zero_spatial_sample, spatial_samples=spatial_samples, every_nth=args.every_nth, every_nth_stratified=args.every_nth_stratified, target_idx=target_idx, use_manual_index=args.use_manual_index, manual_index_file=args.manual_index_file, additional_features=args.additional_features, ignore_last_n_scale=args.ignore_last_n_scale, include_noise_feature=args.include_noise_feature, crop_h=args.crop_h, crop_w=args.crop_w, no_noise_feature=args.no_noise_feature, relax_clipping=args.relax_clipping, render_sigma=render_sigma, same_sample_all_pix=args.same_sample_all_pix, samples_int=samples_int, texture_maps=texture_maps_input, partial_trace=args.partial_trace, rotate=rotate, flip=flip, automatic_subsample=args.automatic_subsample, automate_raymarching_def=args.automate_raymarching_def, chron_order=args.chron_order, def_loop_log_last=args.def_loop_log_last, temporal_texture_buffer=args.temporal_texture_buffer, texture_inds=texture_inds, log_only_return_def_raymarching=args.log_only_return_def_raymarching, SELECT_FEATURE_THRE=args.SELECT_FEATURE_THRE, n_boids=args.n_boids, log_getitem=args.log_getitem, debug=debug, color_scale=color_scale, parallel_stack=True, input_to_shader=input_to_shader, trace_features=trace_features, finite_diff=args.finite_diff, feature_normalize_lo_pct=args.feature_normalize_lo_pct, get_col_aux_inds=args.get_col_aux_inds, specified_ind=specified_ind, write_file=args.overwrite_option_file, alt_dir=args.test_output_dir, strict_clipping_inference=args.strict_clipping_inference, add_positional_encoding=args.add_positional_encoding, base_freq_x=args.base_freq_x, base_freq_y=args.base_freq_y, whitening=args.whitening, clamping=args.clamping)
             
             return func
             
@@ -1941,20 +1670,8 @@ def main_network(args):
             print('feature size: ', int(input_to_network.shape[-1]))
             return
 
-        if args.stratified_sample_higher_res:
-            slicing = samples_int[0]
-            assert slicing is not None
-            if (args.tiled_training or args.tile_only):
-                slicing = tf.slice(slicing, [0, padding_offset // 2, padding_offset // 2, 0], [args.batch_size, args.tiled_h, args.tiled_w, 2])
-                slicing -= padding_offset
-                batch_dim = np.empty((args.batch_size, args.tiled_h, args.tiled_w, 1), dtype=np.int32)
-            else:
-                batch_dim = np.empty((args.batch_size, args.input_h, args.input_w, 1), dtype=np.int32)
-            for batch_id in range(args.batch_size):
-                batch_dim[batch_id] = batch_id
-            slicing = tf.concat((tf.convert_to_tensor(batch_dim), slicing), 3)
-            output = tf.gather_nd(output_pl, slicing)
-        elif args.geometry.startswith('boids'):
+
+        if args.geometry.startswith('boids'):
             output = output_pl
             if not args.mean_estimator:
                 np.save('color_scale.npy', color_scale)
@@ -1992,10 +1709,7 @@ def main_network(args):
             
     def feature_reduction_layer(input_to_network, _replace_normalize_weights=None, ndims=2):
         with tf.variable_scope("feature_reduction"):
-            if (args.regularizer_scale > 0 or args.L2_regularizer_scale > 0):
-                regularizer = slim.l1_l2_regularizer(scale_l1=args.regularizer_scale, scale_l2=args.L2_regularizer_scale)
-            else:
-                regularizer = None
+
 
             actual_nfeatures = args.input_nc
             
@@ -2012,7 +1726,7 @@ def main_network(args):
                 w_shape = [1, actual_nfeatures, actual_feature_reduction_ch]
                 conv = tf.nn.conv1d
                 strides = 1
-            weights = tf.get_variable('w0', w_shape, initializer=tf.contrib.layers.xavier_initializer() if not args.identity_initialize else identity_initializer(color_inds, ndims=ndims), regularizer=regularizer)
+            weights = tf.get_variable('w0', w_shape, initializer=tf.contrib.layers.xavier_initializer() if not args.identity_initialize else identity_initializer(color_inds, ndims=ndims))
 
             weights_to_input = weights
 
@@ -2032,136 +1746,48 @@ def main_network(args):
 
     #with tf.control_dependencies([input_to_network]):
     with tf.variable_scope("generator"):
-        if args.debug_mode and args.mean_estimator:
+        if args.mean_estimator:
             with tf.variable_scope("shader"):
                 network = tf.reduce_mean(input_to_network, axis=0, keep_dims=True)
-            regularizer_loss = 0
             sparsity_loss = 0
-            sparsity_schedule = None
-            target_channel_schedule = None
         else:
             if args.input_nc <= actual_conv_channel:
                 ini_id = True
             else:
                 ini_id = False
-            alpha = tf.placeholder(tf.float32)
-            alpha_val = 1.0
 
             replace_normalize_weights = None
             normalize_weights = None
 
             sparsity_loss = tf.constant(0.0, dtype=dtype)
-            sparsity_schedule = None
-            target_channel_schedule = None
             if args.feature_sparsity_vec:
                 target_channel = args.sparsity_target_channel
                 target_channel_max = target_channel
                 if args.input_nc > target_channel_max:
-                    if args.use_sparsity_pl:
-                        target_channel = tf.placeholder(dtype=tf.int32, shape=())
-                        target_channel_schedule = numpy.linspace(args.input_nc, target_channel_max, args.epoch - args.sparsity_start_freeze - args.sparsity_end_freeze, dtype=int)
-                        target_channel_start_vals = args.input_nc * numpy.ones(args.sparsity_start_freeze, dtype=int)
-                        target_channel_end_vals = target_channel_max * numpy.ones(args.sparsity_end_freeze, dtype=int)
-                        print("target channel schedules")
-                        print(target_channel_start_vals.shape, target_channel_schedule.shape, target_channel_end_vals.shape)
-                        target_channel_schedule = numpy.concatenate((target_channel_start_vals, target_channel_schedule, target_channel_end_vals))
+
                     sparsity_vec = tf.Variable(numpy.ones(args.input_nc), dtype=dtype)
                     input_to_network = input_to_network * sparsity_vec
                     sparsity_abs = tf.abs(sparsity_vec)
                     residual_weights, residual_idx = tf.nn.top_k(-sparsity_abs, tf.maximum((args.input_nc - target_channel), 1))
                     sparsity_loss = -tf.reduce_mean(residual_weights)
                     sparsity_loss = tf.where(tf.equal(target_channel, args.input_nc), 0.0, sparsity_loss)
-                    if not args.feature_sparsity_schedule:
-                        sparsity_loss *= args.feature_sparsity_scale
-                    else:
-                        sparsity_scale = tf.placeholder(dtype=dtype, shape=())
-                        sparsity_loss *= sparsity_scale
-                        if not args.logscale_schedule:
-                            print("using linear scale")
-                            sparsity_schedule = numpy.linspace(args.feature_sparsity_schedule_start, args.feature_sparsity_schedule_end, args.epoch)
-                        else:
-                            print("using logscale")
-                            if args.feature_sparsity_schedule_start <= 0:
-                                log_start = -4
-                            else:
-                                log_start = numpy.log(args.feature_sparsity_schedule_start)
-                            log_end = numpy.log(args.feature_sparsity_schedule_end)
-                            if (not args.schedule_scale_after_freeze) or (not args.use_sparsity_pl):
-                                sparsity_schedule = numpy.logspace(log_start, log_end, args.epoch, base=numpy.e)
-                            else:
-                                sparsity_schedule_end = numpy.logspace(log_start, log_end, args.sparsity_end_freeze)
-                                sparsity_schedule = numpy.concatenate((args.feature_sparsity_schedule_start * numpy.ones(args.epoch - args.sparsity_end_freeze), sparsity_schedule_end))
-                        print(sparsity_schedule)
+                    sparsity_loss *= args.feature_sparsity_scale
+                    
 
             elif args.analyze_channel:
                 sparsity_vec = tf.ones(args.input_nc, dtype=dtype)
                 input_to_network = input_to_network * sparsity_vec
-            
-            elif args.boost_channels != '':
-                
-                mask_vec = np.ones(args.input_nc)
-                
-                selected_channels = [int(k) for k in args.boost_channels.split(',')]
-                valid_inds = np.load(os.path.join(args.name, 'valid_inds.npy')).tolist()
-                
-                for ch in selected_channels:
-                    if ch in valid_inds:
-                        mask_vec[valid_inds.index(ch)] = 0
-                        
-                sparsity_vec = tf.Variable(mask_vec, dtype=dtype)
-                boost_mask = sparsity_vec * mask_vec + (1 - mask_vec)
-                input_to_network = input_to_network  * boost_mask
-                sparsity_loss = tf.reduce_mean(tf.abs(sparsity_vec))
-                
-                if not args.feature_sparsity_schedule:
-                    sparsity_loss *= args.feature_sparsity_scale
-                else:
-                    sparsity_scale = tf.placeholder(dtype=dtype, shape=())
-                    sparsity_loss *= sparsity_scale
-                    if not args.logscale_schedule:
-                        print("using linear scale")
-                        sparsity_schedule = numpy.linspace(args.feature_sparsity_schedule_start, args.feature_sparsity_schedule_end, args.epoch)
-                    else:
-                        print("using logscale")
-                        if args.feature_sparsity_schedule_start <= 0:
-                            log_start = -4
-                        else:
-                            log_start = numpy.log(args.feature_sparsity_schedule_start)
-                        log_end = numpy.log(args.feature_sparsity_schedule_end)
-                        if (not args.schedule_scale_after_freeze) or (not args.use_sparsity_pl):
-                            sparsity_schedule = numpy.logspace(log_start, log_end, args.epoch, base=numpy.e)
-                        else:
-                            sparsity_schedule_end = numpy.logspace(log_start, log_end, args.sparsity_end_freeze)
-                            sparsity_schedule = numpy.concatenate((args.feature_sparsity_schedule_start * numpy.ones(args.epoch - args.sparsity_end_freeze), sparsity_schedule_end))
-                    print(sparsity_schedule)
 
-            regularizer_loss = tf.constant(0.0)
+                
+
             actual_initial_layer_channels = args.initial_layer_channels
-            regularizer = None
             
             feature_reduction_tensor = None
             if not args.train_temporal_seq:
-                if not args.use_lstm:
-                    input_to_network = feature_reduction_layer(input_to_network, _replace_normalize_weights=replace_normalize_weights, ndims=ndims)
-                    feature_reduction_tensor = input_to_network
-                else:
-                    ngroups = input_to_network.shape[-1] // args.lstm_nfeatures_per_group
-                    orig_shape = input_to_network.shape
-                    input_to_network = tf.reshape(input_to_network, [-1, ngroups, args.lstm_nfeatures_per_group])
-                    rnn_cell = tf.nn.rnn_cell.LSTMCell(args.initial_layer_channels)
-                    #layer = tf.keras.layers.RNN(rnn_cell)
-                    #input_to_network = layer(input_to_network)
-                    _, states = tf.nn.dynamic_rnn(rnn_cell, input_to_network, dtype=dtype)
-                    input_to_network = tf.reshape(states.h, [orig_shape[0], orig_shape[1], orig_shape[2], args.initial_layer_channels])
+                input_to_network = feature_reduction_layer(input_to_network, _replace_normalize_weights=replace_normalize_weights, ndims=ndims)
+                feature_reduction_tensor = input_to_network
 
-                
-                
-                if args.learn_loss_proxy:
-                    if padding_offset > 0:
-                        target_input = tf.pad(target_pl, [[0, 0], [padding_offset // 2, padding_offset // 2], [padding_offset // 2, padding_offset // 2], [0, 0]], 'REFLECT')
-                    else:
-                        target_input = target_pl
-                    input_to_network = tf.concat((input_to_network, target_input), 3)
+
 
                 reduced_dim_feature = input_to_network
                 
@@ -2169,19 +1795,12 @@ def main_network(args):
                     
                     for nlayer in range(args.n_initial_layers):
                         if ndims == 2:
-                            input_to_network = slim.conv2d(input_to_network, actual_initial_layer_channels, [1, 1], rate=1, activation_fn=lrelu, weights_initializer=identity_initializer(allow_map_to_less=True), scope='initial_'+str(nlayer), weights_regularizer=regularizer, padding=conv_padding)      
+                            input_to_network = slim.conv2d(input_to_network, actual_initial_layer_channels, [1, 1], rate=1, activation_fn=lrelu, weights_initializer=identity_initializer(allow_map_to_less=True), scope='initial_'+str(nlayer), padding=conv_padding)      
                         else:
                             
-                            #w_shape = [1, args.input_nc, actual_initial_layer_channels]
-                            #conv = tf.nn.conv1d
-                            #strides = 1
-                            #weights = tf.get_variable('w0', w_shape, initializer=tf.contrib.layers.xavier_initializer() if not args.identity_initialize else identity_initializer(color_inds, ndims=ndims), regularizer=regularizer)
-
-                            #weights_to_input = weights
-
-                            #input_to_network = conv(input_to_network, weights_to_input, strides, "SAME")
+                           
                             
-                            input_to_network = slim.conv1d(input_to_network, actual_initial_layer_channels, 1, rate=1, activation_fn=lrelu, weights_initializer=identity_initializer(allow_map_to_less=True, ndims=1), scope='initial_'+str(nlayer), weights_regularizer=regularizer, padding=conv_padding)      
+                            input_to_network = slim.conv1d(input_to_network, actual_initial_layer_channels, 1, rate=1, activation_fn=lrelu, weights_initializer=identity_initializer(allow_map_to_less=True, ndims=1), scope='initial_'+str(nlayer), padding=conv_padding)      
 
                 if args.geometry.startswith('boids'):
                     # 1D case
@@ -2195,7 +1814,7 @@ def main_network(args):
                     
                 else:
                     if args.model_arch == 'dilated':
-                        network=build(input_to_network, ini_id, regularizer_scale=args.regularizer_scale, final_layer_channels=args.final_layer_channels, identity_initialize=args.identity_initialize, output_nc=output_nc)
+                        network=build(input_to_network, ini_id, final_layer_channels=args.final_layer_channels, identity_initialize=args.identity_initialize, output_nc=output_nc)
                     elif args.model_arch == 'vgg':
                         if args.vgg_channels != '':
                             vgg_channels = [int(ch) for ch in args.vgg_channels.split(',')]
@@ -2206,7 +1825,6 @@ def main_network(args):
                     else:
                         raise
             else:
-                assert not args.use_lstm
                 if not args.geometry.startswith('boids'):
                     # 2D case
                     assert args.add_initial_layers
@@ -2325,59 +1943,14 @@ def main_network(args):
                                 current_input_ls.append(init_textures[-1])
                                 current_input_ls.append(input_labels[-1])
                                 current_input_ls = current_input_ls[2:]
-                        
-                            
-    if args.optimize_input:
-        if padding_offset > 0:
-            raw_color = tf.stack([debug_input[:, padding_offset // 2 : -padding_offset // 2, padding_offset // 2 : -padding_offset // 2, ind] for ind in color_inds[::-1]], 3)
-        else:
-            raw_color = tf.stack([debug_input[:, :, :, ind] for ind in color_inds[::-1]], 3)
-            
-        return camera_pos_var, shader_time_var, network, raw_color, input_feature_pl, input_to_shader, trace_features, input_feature_scale_bias, feature_reduction_tensor, debug_input
     
     if args.collect_inference_tensor:
-        if args.learn_loss_proxy:
-            return camera_pos, target_pl, network
-        else:
-            return camera_pos, network
+
+        return camera_pos, network
     
     weight_map = tf.placeholder(tf.float32,shape=[None,None,None])
 
-    if args.learn_loss_proxy:
-        if args.proxy_loss_type == 'smoothed_l2':
-            # currently using smoothed l2 loss
-            # smoothing kernel size equal to network's receptive field
-            # preserve dimensionality with reflect padding
-            kernel_dim = ((padding_offset - 1) // 2) * 2 + 1
-            kernel_activation = np.zeros((kernel_dim, kernel_dim))
-            kernel_center = kernel_dim // 2
-            kernel_activation[kernel_center, kernel_center] = 1
-
-            kernel_sigma = padding_offset // 2
-            kernel = scipy.ndimage.gaussian_filter(kernel_activation, kernel_sigma)
-            kernel /= np.sum(kernel)
-            kernel = numpy.expand_dims(numpy.expand_dims(kernel, 2), 3)
-
-            diff = (target_pl - output_pl) ** 2
-            diff = tf.pad(diff, [[0, 0], [kernel_center, kernel_center], [kernel_center, kernel_center], [0, 0]], 'REFLECT')
-            diff = tf.expand_dims(tf.reduce_mean(diff, 3), 3)
-
-            smoothed_predict = tf.nn.conv2d(diff, kernel, [1, 1, 1, 1], 'VALID')
-            loss = tf.reduce_mean((network - smoothed_predict) ** 2)
-        elif args.proxy_loss_type == 'lpips':
-            # using the lpips from elpips directory because custom modification on spatial has been made there
-            sys.path += ['../../elpips']
-            import elpips
-            metric = elpips.Metric(elpips.lpips_vgg(args.batch_size))
-            tf_distance = metric.forward(output_pl, target_pl, spatial=True)
-            loss = tf.reduce_mean((network - tf_distance) ** 2)
-        elif args.proxy_loss_type == 'from_data':
-            # simply l2 loss between network generated loss and gt loss in output_pl
-            loss = tf.reduce_mean((network - output_pl)) ** 2
-        else:
-            raise
-        
-    elif args.l2_loss:
+    if args.l2_loss:
         if args.geometry.startswith('boids') and args.train_temporal_seq:
             # only regulate the first prediction
             if args.is_train:
@@ -2385,7 +1958,7 @@ def main_network(args):
             else:
                 loss = tf.reduce_mean((network - output_pl) ** 2)
         elif ((not args.is_train) and (not args.collect_validate_loss)) or (not args.train_temporal_seq):
-            if (not args.train_res) or (args.debug_mode and args.mean_estimator):
+            if (not args.train_res) or (args.mean_estimator):
                 diff = network - output
             else:
                 input_color = tf.stack([debug_input[..., ind] for ind in color_inds], axis=-1)
@@ -2421,17 +1994,7 @@ def main_network(args):
     loss_l2 = loss
     loss_add_term = loss
 
-    if args.perceptual_loss:
-        sys.path += ['../../tensorflow-vgg']
-        import vgg16
-        vgg_in = vgg16.Vgg16()
-        vgg_in.build(network)
-        vgg_out = vgg16.Vgg16()
-        vgg_out.build(output)
-        loss_vgg = tf.reduce_mean(tf.square(getattr(vgg_in, args.perceptual_loss_term) - getattr(vgg_out, args.perceptual_loss_term)))
-        perceptual_loss_add = args.perceptual_loss_scale * loss_vgg
-        loss += perceptual_loss_add
-    elif args.lpips_loss:
+    if args.lpips_loss:
         sys.path += ['lpips-tensorflow']
         import lpips_tf
         if args.train_temporal_seq and (args.is_train or args.collect_validate_loss):
@@ -2471,14 +2034,14 @@ def main_network(args):
     else:
         update_cond = tf.no_op()
 
-    if (args.debug_mode and args.mean_estimator):
-        loss_to_opt = loss + regularizer_loss + sparsity_loss
+    if args.mean_estimator:
+        loss_to_opt = loss + sparsity_loss
         gen_loss_GAN = tf.constant(0.0)
         discrim_loss = tf.constant(0.0)
         savers = []
         save_names = []
     elif args.patch_gan_loss:
-        loss = loss + regularizer_loss + sparsity_loss
+        loss = loss + sparsity_loss
         # descriminator adapted from
         # https://github.com/affinelayer/pix2pix-tensorflow/blob/master/pix2pix.py
         # https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/models/networks.py
@@ -2854,7 +2417,7 @@ def main_network(args):
         loss_to_opt = loss
 
     else:
-        loss_to_opt = loss + regularizer_loss + sparsity_loss
+        loss_to_opt = loss + sparsity_loss
         gen_loss_GAN = tf.constant(0.0)
         discrim_loss = tf.constant(0.0)
 
@@ -2880,10 +2443,7 @@ def main_network(args):
 
     avg_loss_l2 = 0
     tf.summary.scalar('avg_loss_l2', avg_loss_l2)
-    avg_loss_sparsity = 0
-    tf.summary.scalar('avg_loss_sparsity', avg_loss_sparsity)
-    avg_loss_regularization = 0
-    tf.summary.scalar('avg_loss_regularization', avg_loss_regularization)
+
 
     avg_training_loss = 0
     tf.summary.scalar('avg_training_loss', avg_training_loss)
@@ -2923,14 +2483,16 @@ def main_network(args):
 
     read_from_epoch = False
 
-    if not (args.debug_mode and args.mean_estimator):
+    if not args.mean_estimator:
         
         ckpts = [None] * len(savers)
+        model_path = [None] * len(savers)
         
         if args.read_from_best_validation:
             assert not args.is_train
             for c_i in range(len(savers)):
                 ckpts[c_i] = tf.train.get_checkpoint_state(os.path.join(args.name, 'best_val', save_names[c_i]))
+                model_path[c_i] = os.path.join(args.name, 'best_val', save_names[c_i], 'model.ckpt')
             if None in ckpts:
                 print('No best validation result exist')
                 raise
@@ -2939,17 +2501,25 @@ def main_network(args):
             read_from_epoch = True
             for c_i in range(len(savers)):
                 ckpts[c_i] = tf.train.get_checkpoint_state(os.path.join(args.name, "%04d"%int(args.which_epoch), save_names[c_i]))
+                model_path[c_i] = os.path.join(args.name, "%04d"%int(args.which_epoch), save_names[c_i], 'model.ckpt')
             if None in ckpts:
                 ckpts = [None] * len(savers)
                 for c_i in range(len(savers)):
                     ckpts[c_i] = tf.train.get_checkpoint_state(os.path.join(args.name, save_names[c_i]))
+                    model_path[c_i] = os.path.join(args.name, save_names[c_i], 'model.ckpt')
                 read_from_epoch = False
 
         if None not in ckpts:
             for c_i in range(len(ckpts)):
-                ckpt = ckpts[c_i]
-                print('loaded '+ ckpt.model_checkpoint_path)
-                savers[c_i].restore(sess, ckpt.model_checkpoint_path)
+                try:
+                    ckpt = ckpts[c_i]
+                    print('loaded '+ ckpt.model_checkpoint_path)
+                    savers[c_i].restore(sess, ckpt.model_checkpoint_path)
+                except:
+                    # Some models has absolute ckpt path, which can fail restoring when the model has been movec to a different location
+                    # In this case, try directly restore from model_path
+                    print('loaded '+ model_path[c_i])
+                    savers[c_i].restore(sess, model_path[c_i])
             print('finished loading')
             
             if args.patch_gan_loss and args.is_train:
@@ -2982,18 +2552,7 @@ def main_network(args):
                     ckpt_origs[c_i] = tf.train.get_checkpoint_state(os.path.join(args.orig_name, save_names[c_i]))
             
             if None not in ckpt_origs:
-                if args.boost_channels != '' and (not args.boost_ch_from_finetune):
-                    if sparsity_vec in gen_tvars and gen_saver in savers:
-                        old_gen_tvars = [tvars for tvars in gen_tvars if tvars != sparsity_vec]
-                        old_gen_saver = tf.train.Saver(old_gen_tvars)
-                        
-                        old_savers = []
-                        for saver in savers:
-                            if saver == gen_saver:
-                                old_savers.append(old_gen_saver)
-                            else:
-                                old_savers.append(saver)
-                        
+                
                 for c_i in range(len(ckpt_origs)):
                     old_savers[c_i].restore(sess, ckpt_origs[c_i].model_checkpoint_path)
                     print('loaded '+ckpt_origs[c_i].model_checkpoint_path)
@@ -3003,7 +2562,6 @@ def main_network(args):
     
     save_frequency = 1
     num_epoch = args.epoch
-    #assert num_epoch % save_frequency == 0
 
     
 
@@ -3200,8 +2758,6 @@ def main_network(args):
         
         if args.geometry.startswith('boids'):
             rec_arr_len = args.niters
-        elif args.learn_loss_proxy and args.proxy_loss_type == 'from_data':
-            rec_arr_len = time_vals.shape[0] ** 2
         else:
             rec_arr_len = time_vals.shape[0]
             if args.temporal_texture_buffer:
@@ -3209,18 +2765,11 @@ def main_network(args):
                 
         all=np.zeros(int(rec_arr_len * ntiles_w * ntiles_h), dtype=float)
         all_l2=np.zeros(int(rec_arr_len * ntiles_w * ntiles_h), dtype=float)
-        all_sparsity=np.zeros(int(rec_arr_len * ntiles_w * ntiles_h), dtype=float)
-        all_regularization = np.zeros(int(rec_arr_len * ntiles_w * ntiles_h), dtype=float)
         all_training_loss = np.zeros(int(rec_arr_len * ntiles_w * ntiles_h), dtype=float)
         all_perceptual = np.zeros(int(rec_arr_len * ntiles_w * ntiles_h), dtype=float)
         all_gen_gan_loss = np.zeros(int(rec_arr_len * ntiles_w * ntiles_h), dtype=float)
         all_discrim_loss = np.zeros(int(rec_arr_len * ntiles_w * ntiles_h), dtype=float)
 
-        alpha_start = -3
-        alpha_end = 0
-        #num_transition_epoch = 50
-        num_transition_epoch = 20
-        alpha_schedule = np.logspace(alpha_start, alpha_end, num_transition_epoch)
         printval = False
         
         total_step_count = 0
@@ -3229,10 +2778,7 @@ def main_network(args):
         old_val_loss = 1e20
         
         if args.use_validation:
-            if args.learn_loss_proxy:
-                nvalidation_cameras = validate_time_vals.shape[0]
-                assert nvalidation_cameras % args.batch_size == 0
-            elif args.geometry.startswith('boids'):
+            if args.geometry.startswith('boids'):
                 # deterministic sampling, so every iter samples the same validation examples
                 v_nsamples = (max_sample_time - min_sample_time + 1)
                 ntex = validate_camera_pos.shape[0] // (max_sample_time + 1 )
@@ -3266,24 +2812,11 @@ def main_network(args):
             sub_epochs = 1
             
             # if loss_proxy is gt value is directly read from data, we will enumerate each possible pair for each epoch
-            if args.learn_loss_proxy and (not args.proxy_loss_type == 'from_data'):
-                permutation_target_pl = np.random.permutation(int(nexamples * ntiles_h * ntiles_w))
-                if args.loss_proxy_encourage_0:
-                    # for a quater of the training iterations, actually use target as the same output_ground, to ensure the loss can be 0
-                    same_target_idx = np.random.choice(int(nexamples * ntiles_h * ntiles_w), size=int(nexamples * ntiles_h * ntiles_w) // 4, replace=False)
-                    permutation_target_pl[same_target_idx] = permutation[same_target_idx]
-            else:
-                permutation_target_pl = None
-            
-            if args.finetune and epoch <= num_transition_epoch:
-                alpha_val = alpha_schedule[epoch-1]
+            permutation_target_pl = None
+
 
             feed_dict={}
-            if sparsity_schedule is not None:
-                feed_dict[sparsity_scale] = sparsity_schedule[epoch-1]
-            if target_channel_schedule is not None:
-                print("using target channel schedule")
-                feed_dict[target_channel] = target_channel_schedule[epoch-1]
+
                 
             log_const_batch_idx = []
 
@@ -3300,17 +2833,7 @@ def main_network(args):
                     tile_idx = (permutation[start_id:end_id] % (ntiles_w * ntiles_h)).astype('i')
                     run_options = None
                     run_metadata = None
-                    
-                    if args.learn_loss_proxy:
-                        if args.proxy_loss_type == 'from_data':
-                            # if read from data, nexamples = # of camera pos ** 2
-                            # for each idx, source_idx = idx % # of camera pos
-                            # for each idx, target_idx = idx // # of camera pos
-                            target_pl_idx = frame_idx // ncameras
-                        else:
-                            # using the same reference img pool as target image
-                            # but randomly choose from the pool so that it doesn't has to be exactly same as current reference image
-                            target_pl_idx = (permutation_target_pl[start_id:end_id] / (ntiles_w * ntiles_h)).astype('i')
+
                             
                     if args.discrim_train_steps > 1:
                         feed_dict[step_count] = total_step_count
@@ -3339,22 +2862,6 @@ def main_network(args):
                             output_indices = sample_time * np.arange(ngts + 1) + np.tile(np.expand_dims(sample_start, 1), ngts+1)
                             feed_dict[output_pl] = camera_pos_vals[output_indices]
                         
-                    elif args.learn_loss_proxy and args.proxy_loss_type == 'from_data':
-                        source_idx = frame_idx % ncameras
-                        output_arr = gt_loss_train[target_pl_idx, source_idx]
-                        feed_dict[output_pl] = np.expand_dims(output_arr, 3)
-                        
-                        feed_dict[shader_time] = time_vals[source_idx]
-                        feed_dict[camera_pos] = camera_pos_vals[source_idx, :].transpose()
-                        
-                        if args.preload:
-                            target_arr = output_images[target_pl_idx]
-                        else:
-                            target_arr = np.empty([args.batch_size, target_pl_h, target_pl_w, 3])
-                            for i in range(target_pl_idx.shape[0]):
-                                target_arr[i] = read_name(output_names[target_pl_idx[i]], False)
-                        feed_dict[target_pl] = target_arr
-                                
                     else:
                     
                         if not args.use_queue:
@@ -3380,17 +2887,12 @@ def main_network(args):
                                     additional_arr = np.empty([args.batch_size, output_pl.shape[1].value, output_pl.shape[2].value, 1])
                                     for img_idx in range(frame_idx.shape[0]):
                                         additional_arr[img_idx, :, :, 0] = read_name(add_names[frame_idx[img_idx]], True)
-                                
-                                if args.learn_loss_proxy:
-                                    target_arr = np.empty(output_arr.shape)
-                                    for img_idx in range(target_pl_idx.shape[0]):
-                                        target_arr[img_idx, :, :, :] = read_name(output_names[target_pl_idx[img_idx]], False)
+
                             else:
                                 output_arr = output_images[frame_idx]
                                 if args.additional_input:
                                     additional_arr = all_adds[frame_idx]
-                                if args.learn_loss_proxy:
-                                    target_arr = output_images[target_pl_idx]
+
                             #output_arr = numpy.ones([1, args.input_h, args.input_w, 3])
                             if args.tiled_training:
                                 # TODO: finish logic when batch_size > 1
@@ -3431,18 +2933,14 @@ def main_network(args):
                             feed_dict[output_pl] = output_arr
                             if args.additional_input:
                                 feed_dict[additional_input_pl] = additional_arr
-                            if args.learn_loss_proxy:
-                                feed_dict[target_pl] = target_arr
+
 
                         if not args.use_queue:
                             if not args.temporal_texture_buffer:
                                 camera_val = camera_pos_vals[frame_idx, :].transpose()
                                 feed_dict[camera_pos] = camera_val
                                 feed_dict[shader_time] = time_vals[frame_idx]
-                                
-                                if augment_camera_pos:
-                                    augment_random_seed = np.random.choice(3, size=frame_idx.shape).astype('f') - 1
-                                    feed_dict[camera_pos] += np.expand_dims(camera_periodic_range, 1) * np.expand_dims(augment_random_seed, 0)
+
                             else:
                                 assert args.batch_size == 1
                                 camera_val = np.empty([33, 1])
@@ -3464,7 +2962,7 @@ def main_network(args):
 
                     st1 = time.time()
                     
-                    _,current, current_l2, current_sparsity, current_regularization, current_training, current_perceptual, current_gen_loss_GAN, current_discrim_loss, current_ind_val, update_cond_val =sess.run([opt,loss, loss_l2, sparsity_loss, regularizer_loss, loss_to_opt, perceptual_loss_add, gen_loss_GAN, discrim_loss, current_ind, update_cond],feed_dict=feed_dict, options=run_options, run_metadata=run_metadata)
+                    _, current, current_l2, current_training, current_perceptual, current_gen_loss_GAN, current_discrim_loss, current_ind_val, update_cond_val =sess.run([opt, loss, loss_l2, loss_to_opt, perceptual_loss_add, gen_loss_GAN, discrim_loss, current_ind, update_cond],feed_dict=feed_dict, options=run_options, run_metadata=run_metadata)
                     
                     st2 = time.time()
                     
@@ -3482,8 +2980,6 @@ def main_network(args):
                         current_slice = permutation[start_id:end_id]
                     all[current_slice]=current
                     all_l2[current_slice]=current_l2
-                    all_sparsity[current_slice]=current_sparsity
-                    all_regularization[current_slice] = current_regularization
                     all_training_loss[current_slice] = current_training
                     all_perceptual[current_slice] = current_perceptual
                     all_gen_gan_loss[current_slice] = current_gen_loss_GAN
@@ -3498,9 +2994,6 @@ def main_network(args):
             
             avg_loss = np.mean(all[np.where(all)])
             avg_loss_l2 = np.mean(all_l2[np.where(all_l2)])
-            #avg_loss_sparsity = np.mean(all_sparsity[np.where(all_sparsity)])
-            avg_loss_sparsity = np.mean(all_sparsity)
-            avg_loss_regularization = np.mean(all_regularization)
             avg_training_loss = np.mean(all_training_loss)
             avg_perceptual = np.mean(all_perceptual)
             avg_gen_gan = np.mean(all_gen_gan_loss)
@@ -3509,34 +3002,16 @@ def main_network(args):
             if args.use_validation:
                 
                 current_val_loss = 0.0
-                
-                if args.learn_loss_proxy and args.proxy_loss_type == 'from_data':
-                    
-                    for ind_target in range(nvalidation_cameras):
-                        for ind_source in range(0, nvalidation_cameras, args.batch_size):
-                            feed_dict[output_pl] = np.expand_dims(gt_loss_val[ind_target, ind_source:ind_source+args.batch_size], 3)
-                            feed_dict[shader_time] = validate_time_vals[ind_source:ind_source+args.batch_size]
-                            feed_dict[camera_pos] = validate_camera_vals[ind_source:ind_source+args.batch_size].transpose()
-                            
-                            if args.preload:
-                                target_arr = np.tile(validate_images[ind_target], [args.batch_size, 1, 1, 1])
-                            else:
-                                target_arr = np.tile(read_name(validate_img_names[ind_target], False), [args.batch_size, 1, 1, 1])
-                            feed_dict[target_pl] = target_arr
-                            
-                            current_val_loss += sess.run(loss_to_opt, feed_dict=feed_dict)
-                        print('validation,', ind_target)
-                            
-                else:
-                    for batch_ind in range(nbatches):
-                        start_ind = args.batch_size * batch_ind
-                        end_ind = start_ind + args.batch_size
-                        feed_dict[texture_maps] = validate_camera_pos[start_texture[start_ind:end_ind]]
-                        feed_dict[shader_time] = v_sample_time[start_ind:end_ind].astype('f')
-                        feed_dict[output_pl] = validate_camera_pos[end_texture[start_ind:end_ind]]
-                        loss_per_sample_val = sess.run(loss_per_sample, options=run_options, run_metadata=run_metadata, feed_dict=feed_dict)
 
-                        current_val_loss += np.sum(loss_per_sample_val * sample_p[v_sample_time[start_ind:end_ind] - min_sample_time])
+                for batch_ind in range(nbatches):
+                    start_ind = args.batch_size * batch_ind
+                    end_ind = start_ind + args.batch_size
+                    feed_dict[texture_maps] = validate_camera_pos[start_texture[start_ind:end_ind]]
+                    feed_dict[shader_time] = v_sample_time[start_ind:end_ind].astype('f')
+                    feed_dict[output_pl] = validate_camera_pos[end_texture[start_ind:end_ind]]
+                    loss_per_sample_val = sess.run(loss_per_sample, options=run_options, run_metadata=run_metadata, feed_dict=feed_dict)
+
+                    current_val_loss += np.sum(loss_per_sample_val * sample_p[v_sample_time[start_ind:end_ind] - min_sample_time])
 
                         
                 if current_val_loss > old_val_loss:
@@ -3560,8 +3035,6 @@ def main_network(args):
                 summary = tf.Summary()
                 summary.value.add(tag='avg_loss', simple_value=avg_loss)
                 summary.value.add(tag='avg_loss_l2', simple_value=avg_loss_l2)
-                summary.value.add(tag='avg_loss_sparsity', simple_value=avg_loss_sparsity)
-                summary.value.add(tag='avg_loss_regularization', simple_value=avg_loss_regularization)
                 summary.value.add(tag='avg_training_loss', simple_value=avg_training_loss)
                 summary.value.add(tag='avg_perceptual', simple_value=avg_perceptual)
                 summary.value.add(tag='avg_gen_gan', simple_value=avg_gen_gan)
@@ -3768,17 +3241,12 @@ def main_network(args):
             elif args.mean_estimator:
                 debug_dir = "%s/mean%d"%(args.name, args.estimator_samples)
                 debug_dir += '_test' if not args.test_training else '_train'
-                #debug_dir = "%s/mean%d"%('/localtmp/yuting', args.estimator_samples)
             else:
-                #debug_dir = "%s/debug"%args.name
                 debug_dir = args.name + '/' + ('test' if not args.test_training else 'train')
-                if args.debug_mode:
-                    debug_dir += '_debug'
-                #debug_dir = "%s/debug"%'/localtmp/yuting'
 
 
 
-            debug_dir += '_zero_out_sparsity_vec' if args.zero_out_sparsity_vec else ''
+
             
             debug_dir += '_adjacent' if args.generate_adjacent_seq else ''
 
@@ -3817,34 +3285,6 @@ def main_network(args):
             run_metadata = None
 
             feed_dict = {}
-            if sparsity_schedule is not None:
-                if not read_from_epoch:
-                    feed_dict[sparsity_scale] = sparsity_schedule[-1]
-                else:
-                    feed_dict[sparsity_scale] = sparsity_schedule[args.which_epoch - 1]
-            if target_channel_schedule is not None:
-                if not read_from_epoch:
-                    feed_dict[target_channel] = target_channel_schedule[-1]
-                else:
-                    feed_dict[target_channel] = target_channel_schedule[args.which_epoch - 1]
-
-            if args.feature_sparsity_vec and args.zero_out_sparsity_vec:
-                if args.input_nc > target_channel_max:
-                    # workaround due to an incorrect tensorflow dependency on placeholders...
-                    #feed_dict = {camera_pos: camera_pos_vals[0, :], shader_time: time_vals[0:1]}
-                    if not args.use_queue:
-                        feed_dict[camera_pos] = camera_pos_vals[0:1, :].transpose()
-                        feed_dict[shader_time] = time_vals[0:1]
-                    # workaround for tensorflow's weird compute graph that's asking for placeholder values more than needed
-                    vec_val = sess.run(sparsity_vec)
-                    if isinstance(target_channel, int):
-                        inference_channel = target_channel
-                    else:
-                        inference_channel = feed_dict[target_channel]
-                    _, idx_val = sess.run(tf.nn.top_k(-tf.abs(sparsity_vec), args.input_nc - inference_channel))
-                    #vec_val, idx_val = sess.run([sparsity_vec, residual_idx], feed_dict=feed_dict)
-                    vec_val[idx_val] = 0.0
-                    sess.run(tf.assign(sparsity_vec, vec_val))
 
 
             if args.render_only:
@@ -3898,7 +3338,7 @@ def main_network(args):
                     if args.additional_input:
                         feed_dict[additional_input_pl] = np.expand_dims(np.expand_dims(read_name(val_add_names[i], True), axis=2), axis=0)
 
-                    if args.debug_mode and args.mean_estimator and args.mean_estimator_memory_efficient:
+                    if args.mean_estimator and args.mean_estimator_memory_efficient:
                         nruns = args.estimator_samples
                         output_buffer = numpy.zeros((1, 640, 960, 3))
                     else:
@@ -3948,7 +3388,7 @@ def main_network(args):
                     else:
                         for _ in range(nruns):
                             output_image = sess.run(network, feed_dict=feed_dict)
-                            if args.debug_mode and args.mean_estimator and args.mean_estimator_memory_efficient:
+                            if args.mean_estimator and args.mean_estimator_memory_efficient:
                                 output_buffer += output_image[:, :, :, ::-1]
 
 
@@ -3961,7 +3401,7 @@ def main_network(args):
                     else:
                         if args.mean_estimator:
                             output_image = output_image[:, :, :, ::-1]
-                        if args.debug_mode and args.mean_estimator and args.mean_estimator_memory_efficient:
+                        if args.mean_estimator and args.mean_estimator_memory_efficient:
                             output_buffer /= args.estimator_samples
                             output_image[:] = output_buffer[:]
 
@@ -4043,7 +3483,6 @@ def main_network(args):
                                 all_seq_err[repeat, frame] = l2_loss_val
 
                                 feed_dict[texture_maps] = output_pos
-
                                 current_idx += simulation_step
                         np.save(os.path.join(debug_dir, 'all_seq_pos.npy'), all_seq_pos)
                         np.save(os.path.join(debug_dir, 'all_seq_err.npy'), all_seq_err)
@@ -4112,8 +3551,7 @@ def main_network(args):
                         # for efficiency, do not render overlapping frames
                         nexamples -= 1
                         nexamples = nexamples // 10
-                    elif args.learn_loss_proxy and args.proxy_loss_type == 'from_data':
-                        nexamples = time_vals.shape[0] ** 2
+
 
                     all_test = np.zeros(nexamples, dtype=float)
                     all_grad = np.zeros(nexamples, dtype=float)
@@ -4121,8 +3559,6 @@ def main_network(args):
                     all_perceptual = np.zeros(nexamples, dtype=float)
                     python_time = numpy.zeros(nexamples)
 
-                    if args.learn_loss_proxy and (not args.proxy_loss_type == 'from_data'):
-                        all_loss_proxy = np.zeros((nexamples, 2), dtype=float)
                     if args.train_temporal_seq:
                         previous_buffer = np.empty([1, input_pl_h, input_pl_w, 6*(args.nframes_temporal_gen-1)])
 
@@ -4137,75 +3573,54 @@ def main_network(args):
                         
                         for repeat in range(args.nrepeat):
                             if not args.use_queue:
+  
+                                camera_val = np.expand_dims(camera_pos_vals[i, :], axis=1)
+                                #feed_dict = {camera_pos: camera_val, shader_time: time_vals[i:i+1]}
+                                feed_dict[camera_pos] = camera_val
+                                feed_dict[shader_time] = time_vals[i:i+1]
 
-                                if args.learn_loss_proxy and args.proxy_loss_type == 'from_data':
-                                    target_pl_idx = i // ncameras
-                                    source_idx = i % ncameras
-                                    feed_dict[output_pl] = np.expand_dims(np.expand_dims(gt_loss_train[target_pl_idx, source_idx], 0), 3)
-                                    feed_dict[shader_time] = [time_vals[source_idx]]
-                                    feed_dict[camera_pos] = np.expand_dims(camera_pos_vals[source_idx, :], axis=1)
-                                    feed_dict[target_pl] = np.expand_dims(read_name(val_img_names[target_pl_idx], False, False), 0)
-                                else:    
-                                    camera_val = np.expand_dims(camera_pos_vals[i, :], axis=1)
-                                    #feed_dict = {camera_pos: camera_val, shader_time: time_vals[i:i+1]}
+                                if args.temporal_texture_buffer:
+                                    # TODO: this only works for fluid approx app
+                                    camera_val = np.empty([33, 1])
+                                    camera_val[:, 0] = np.reshape(camera_pos_vals[i*10:i*10+11, 3:], 33)
                                     feed_dict[camera_pos] = camera_val
-                                    feed_dict[shader_time] = time_vals[i:i+1]
-
-                                    if args.temporal_texture_buffer:
-                                        # TODO: this only works for fluid approx app
-                                        camera_val = np.empty([33, 1])
-                                        camera_val[:, 0] = np.reshape(camera_pos_vals[i*10:i*10+11, 3:], 33)
-                                        feed_dict[camera_pos] = camera_val
-                                        feed_dict[shader_time] = time_vals[i*10:i*10+1]
+                                    feed_dict[shader_time] = time_vals[i*10:i*10+1]
 
 
-                                    if args.temporal_texture_buffer:
-                                        output_ground = np.empty([1, output_pl.shape[1].value, output_pl.shape[2].value, output_nc])
-                                        # a hack to read 10 frames after selected idx in fluid approx mode
-                                        # at first we only test inference on input with every 10 frames
-                                        # so that output frame will be non overlapping
-                                        # for index i, output gt is i+1 to i+10
-                                        for seq_id in range(10):
-                                            output_ground[0, :, :, seq_id*3:seq_id*3+3] = read_name(val_img_names[i*10+seq_id+1], False)
+                                if args.temporal_texture_buffer:
+                                    output_ground = np.empty([1, output_pl.shape[1].value, output_pl.shape[2].value, output_nc])
+                                    # a hack to read 10 frames after selected idx in fluid approx mode
+                                    # at first we only test inference on input with every 10 frames
+                                    # so that output frame will be non overlapping
+                                    # for index i, output gt is i+1 to i+10
+                                    for seq_id in range(10):
+                                        output_ground[0, :, :, seq_id*3:seq_id*3+3] = read_name(val_img_names[i*10+seq_id+1], False)
 
 
-                                        current_texture_maps = np.transpose(np.load(val_img_names[i*10]), (2, 0, 1))
-                                        with warnings.catch_warnings():
-                                            warnings.simplefilter("ignore")
-                                            if not (current_texture_maps.shape[1] == height and current_texture_maps.shape[2] == width):
-                                                current_texture_maps = skimage.transform.resize(current_texture_maps, (current_texture_maps.shape[0], height, width))
-                                        for k in range(len(texture_maps)):
-                                            feed_dict[texture_maps[k]] = current_texture_maps[k]
-                                    elif args.train_temporal_seq:
-                                        output_ground = None
+                                    current_texture_maps = np.transpose(np.load(val_img_names[i*10]), (2, 0, 1))
+                                    with warnings.catch_warnings():
+                                        warnings.simplefilter("ignore")
+                                        if not (current_texture_maps.shape[1] == height and current_texture_maps.shape[2] == width):
+                                            current_texture_maps = skimage.transform.resize(current_texture_maps, (current_texture_maps.shape[0], height, width))
+                                    for k in range(len(texture_maps)):
+                                        feed_dict[texture_maps[k]] = current_texture_maps[k]
+                                elif args.train_temporal_seq:
+                                    output_ground = None
+                                else:
+                                    output_ground = np.expand_dims(read_name(val_img_names[i], False, False), 0)
+
+
+                                if args.tile_only:
+                                    if not inference_entire_img_valid:
+                                        feed_dict[h_start] = tile_start_vals[i:i+1, 0] - padding_offset / 2
+                                        feed_dict[w_start] = tile_start_vals[i:i+1, 1] - padding_offset / 2
                                     else:
-                                        if args.learn_loss_proxy:
-
-                                            # placeholder sampling stragety for target output
-                                            # for each example, compute the loss twoce
-                                            # once with the target that is exactly the same as the expected output
-                                            # another time use the next wrapped len(dataset) // 2 index
-
-                                            output_ground = np.expand_dims(read_name(val_img_names[i], False, False), 0)
-
-                                            target_idx = (i + len(val_img_names) // 2) % (len(val_img_names))
-                                            target_ground = np.expand_dims(read_name(val_img_names[target_idx], False, False), 0)
-
-                                        else:
-                                            output_ground = np.expand_dims(read_name(val_img_names[i], False, False), 0)
-
-
-                                    if args.tile_only:
-                                        if not inference_entire_img_valid:
-                                            feed_dict[h_start] = tile_start_vals[i:i+1, 0] - padding_offset / 2
-                                            feed_dict[w_start] = tile_start_vals[i:i+1, 1] - padding_offset / 2
-                                        else:
-                                            feed_dict[h_start] = np.array([- padding_offset / 2])
-                                            feed_dict[w_start] = np.array([- padding_offset / 2])
-                                    if output_ground is not None:
-                                        feed_dict[output_pl] = output_ground
-                                    if args.additional_input:
-                                        feed_dict[additional_input_pl] = np.expand_dims(np.expand_dims(read_name(val_add_names[i], True), axis=2), axis=0)
+                                        feed_dict[h_start] = np.array([- padding_offset / 2])
+                                        feed_dict[w_start] = np.array([- padding_offset / 2])
+                                if output_ground is not None:
+                                    feed_dict[output_pl] = output_ground
+                                if args.additional_input:
+                                    feed_dict[additional_input_pl] = np.expand_dims(np.expand_dims(read_name(val_add_names[i], True), axis=2), axis=0)
 
 
                             #output_buffer = numpy.zeros(output_ground.shape)
@@ -4330,23 +3745,14 @@ def main_network(args):
                                 #output_ground = np.expand_dims(np.concatenate(output_grounds[args.nframes_temporal_gen-1:], 2), 0)
 
                             else:
-                                if args.debug_mode and args.mean_estimator and args.mean_estimator_memory_efficient:
+                                if args.mean_estimator and args.mean_estimator_memory_efficient:
                                     nruns = args.estimator_samples
-                                elif args.learn_loss_proxy and (not args.proxy_loss_type == 'from_data'):
-                                    nruns = 2
-                                    assert output_nc == 1
-                                    output_images = []
-                                    l2_loss_vals = 0
                                 else:
                                     nruns = args.repeat_timing
                                 st_sum = 0
                                 timeline_sum = 0
                                 for k in range(nruns):
-                                    if args.learn_loss_proxy and (not args.proxy_loss_type == 'from_data'):
-                                        if k == 0:
-                                            feed_dict[target_pl] = output_ground
-                                        else:
-                                            feed_dict[target_pl] = target_ground
+
                                             
                                     if args.generate_adjacent_seq:
                                         feed_dict[shader_time] = feed_dict[shader_time] + (args.inference_seq_len - 1) / 30
@@ -4369,30 +3775,22 @@ def main_network(args):
                                     if args.repeat_timing > 1:
                                         time_stats[time_count] = st_after - st_before
                                         time_count += 1
-                                    if args.debug_mode and args.mean_estimator and args.mean_estimator_memory_efficient:
+                                    if args.mean_estimator and args.mean_estimator_memory_efficient:
                                         output_buffer += output_image[:, :, :, ::-1]
-                                    if args.learn_loss_proxy and (not args.proxy_loss_type == 'from_data'):
-                                        output_images.append(output_image)
-                                        l2_loss_vals += l2_loss_val
-                                        all_loss_proxy[i, k] = np.mean(output_image)
-                                    else:
-                                        output_images = [output_image]
+                                    output_images = [output_image]
                                 st2 = time.time()
-                                if args.learn_loss_proxy and (not args.proxy_loss_type == 'from_data'):
-                                    l2_loss_val = l2_loss_vals / nruns
-                                #print("rough time estimate:", st2 - st)
+
                                 print(current_ind_val, "rough time estimate:", st_sum)
 
                                 if args.mean_estimator:
                                     output_image = output_image[:, :, :, ::-1]
                                 #print("output_image swap axis")
-                                if args.debug_mode and args.mean_estimator and args.mean_estimator_memory_efficient:
+                                if args.mean_estimator and args.mean_estimator_memory_efficient:
                                     output_buffer /= args.estimator_samples
                                     output_image[:] = output_buffer[:]
                                 
                             st2 = time.time()
-                            #if not args.stratified_sample_higher_res:
-                            if (not args.use_queue) and (not args.train_temporal_seq) and (not args.learn_loss_proxy) and (not args.generate_adjacent_seq):
+                            if (not args.use_queue) and (not args.train_temporal_seq) and (not args.generate_adjacent_seq):
                                 loss_val = np.mean((output_image - output_ground) ** 2)
                             else:
                                 loss_val = l2_loss_val
@@ -4407,13 +3805,7 @@ def main_network(args):
                             else:
                                 img_prefix = ''
 
-                            if args.learn_loss_proxy:
-                                for k in range(len(output_images)):
-                                    output_image = output_images[k]
-                                    output_image=np.clip(output_image,0.0,1.0)
-                                    output_image *= 255.0
-                                    cv2.imwrite("%s/%s%06d%d.png"%(debug_dir, img_prefix, i+1, k),np.uint8(output_image[0,:,:,:]))
-                            elif output_image.shape[3] == 3:
+                            if output_image.shape[3] == 3:
                                 output_image=np.clip(output_image,0.0,1.0)
                                 output_image *= 255.0
                                 cv2.imwrite("%s/%s%06d.png"%(debug_dir, img_prefix, i+1),np.uint8(output_image[0,:,:,:]))
@@ -4447,13 +3839,7 @@ def main_network(args):
                     numpy.save(os.path.join(debug_dir, 'python_time.npy'), python_time)
                     
                     open("%s/all_time.txt"%debug_dir, 'w').write("%f"%(np.median(python_time)))
-                    if args.learn_loss_proxy:
-                        if args.proxy_loss_type == 'from_data':
-                            all_l2 = all_l2.reshape((ncameras, ncameras))
-                            # indexed by [target_idx, source_idx]
-                            np.save(os.path.join(debug_dir, 'all_loss_proxy.npy'), all_l2)
-                        else:
-                            numpy.save(os.path.join(debug_dir, 'all_loss_proxy.npy'), all_loss_proxy)
+
                     print("all times saved")
 
             test_dirname = debug_dir
@@ -4462,27 +3848,12 @@ def main_network(args):
                 target=open(os.path.join(test_dirname, 'score.txt'),'w')
                 target.write("%f"%np.mean(all_test[np.where(all_test)]))
                 target.close()
-                target=open(os.path.join(test_dirname, 'vgg.txt'),'w')
-                target.write("%f"%np.mean(all_perceptual[np.where(all_perceptual)]))
-                target.close()
-                target=open(os.path.join(test_dirname, 'vgg_same_scale.txt'),'w')
-                target.write("%f"%np.mean(all_perceptual[np.where(all_perceptual)]))
-                target.close()
                 if all_test.shape[0] == 30:
                     score_close = np.mean(all_test[:5])
                     score_far = np.mean(all_test[5:10])
                     score_middle = np.mean(all_test[10:])
                     target=open(os.path.join(test_dirname, 'score_breakdown.txt'),'w')
                     target.write("%f, %f, %f"%(score_close, score_far, score_middle))
-                    target.close()
-                    perceptual_close = np.mean(all_perceptual[:5])
-                    perceptual_far = np.mean(all_perceptual[5:10])
-                    perceptual_middle = np.mean(all_perceptual[10:])
-                    target=open(os.path.join(test_dirname, 'vgg_breakdown.txt'),'w')
-                    target.write("%f, %f, %f"%(perceptual_close, perceptual_far, perceptual_middle))
-                    target.close()
-                    target=open(os.path.join(test_dirname, 'vgg_breakdown_same_scale.txt'),'w')
-                    target.write("%f, %f, %f"%(perceptual_close, perceptual_far, perceptual_middle))
                     target.close()
 
                 if args.test_training:
