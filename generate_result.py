@@ -312,6 +312,41 @@ app_shader_dir_200 = {
               'gt_dir': 'datas_boids',
               'RGBx_ch': 1173,
               'geometry': 'boids_coarse'}
+    },
+    'unified': {
+    'mandelbrot': {'dir': ['1x_1sample_unified_mandelbrot_mandelbulb_trippy_primitives_with_bg_automatic_200/test_mandelbrot',
+                           '1x_1sample_unified_mandelbrot_mandelbulb_trippy_primitives_with_bg_aux_largest_capacity/test_mandelbrot'],
+                   'img_idx': 30,
+                   'img_zoom_bbox': [250, 250+80, 570, 570+60],
+                   'gt_dir': 'datas_mandelbrot/test_img',
+                   'msaa_sample': 5,
+                   'print': 'Mandelbrot'
+                  },
+    'mandelbulb': {'dir': ['1x_1sample_unified_mandelbrot_mandelbulb_trippy_primitives_with_bg_automatic_200/test_mandelbulb_slim',
+                           '1x_1sample_unified_mandelbrot_mandelbulb_trippy_primitives_with_bg_aux_largest_capacity/test_mandelbulb_slim'],
+                   'img_idx': 20,
+                   'img_zoom_bbox': [250, 250+80, 325, 325+60],
+                   'gt_dir': 'datas_mandelbulb/test_img',
+                   'msaa_sample': 2,
+                   'print': 'Mandelbulb'
+                  },
+    'trippy': {'dir': ['1x_1sample_unified_mandelbrot_mandelbulb_trippy_primitives_with_bg_automatic_200/test_trippy_heart_new',
+                           '1x_1sample_unified_mandelbrot_mandelbulb_trippy_primitives_with_bg_aux_largest_capacity/test_trippy_heart_new'],
+                   'img_idx': 30,
+                   'img_zoom_bbox': [550, 550+80, 65, 65+60],
+                   'gt_dir': 'datas_trippy_new_extrapolation_subsample_2/test_img',
+                   'msaa_sample': 9,
+                   'print': 'Trippy Heart'
+                  },
+    'gear': {'dir': ['1x_1sample_unified_mandelbrot_mandelbulb_trippy_primitives_with_bg_automatic_200/test_primitives_wheel_only_new',
+                           '1x_1sample_unified_mandelbrot_mandelbulb_trippy_primitives_with_bg_aux_largest_capacity/test_primitives_wheel_only_new'],
+                   'img_idx': 15,
+                   'img_zoom_bbox': [420, 420+80, 600, 600+60],
+                   'gt_dir': 'datas_primitives_correct_test_range/test_img',
+                   'msaa_sample': 1,
+                   #'crop_box': [80, -180, 115, -275],
+                   'print': 'Gear'
+                  }
     }
 }
 
