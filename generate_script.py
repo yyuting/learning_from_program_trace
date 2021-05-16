@@ -53,7 +53,7 @@ def generate_script(application, args):
             gt_dir = info['gt_dir']
             
             cmd = f"""
-python model.py --name {args.modelroot}/{model_dir} --dataroot {args.modelroot}/datasets/{dataset_dir} --initial_layer_channels 48 --shader_name boids_coarse --geometry boids_coarse --data_from_gpu --epoch 200 --save_frequency 1 --use_batch --batch_size 1000 --niters 500000 --temporal_texture_buffer --train_with_zero_samples --interval_sample_geometric 1.055 --max_sample_time 64 --min_sample_time 20 --train_res --use_validation --random_switch_label --feature_normalize_lo_pct 5 --add_initial_layers"""
+python model.py --name {args.modelroot}/models/{model_dir} --dataroot {args.modelroot}/datasets/{dataset_dir} --initial_layer_channels 48 --shader_name boids_coarse --geometry boids_coarse --data_from_gpu --epoch 200 --save_frequency 1 --use_batch --batch_size 1000 --niters 500000 --temporal_texture_buffer --train_with_zero_samples --interval_sample_geometric 1.055 --max_sample_time 64 --min_sample_time 20 --train_res --use_validation --random_switch_label --feature_normalize_lo_pct 5 --add_initial_layers"""
             
             if idx == 1:
                 cmd += ' --manual_features_only --feature_reduction_ch 1173'
@@ -80,9 +80,6 @@ python model.py --name {args.modelroot}/{model_dir} --dataroot {args.modelroot}/
         
         if application in ['denoising', 'simplified', 'simulation']:
             actual_shader = entry
-        elif application == 'unified':
-            # TODO: finish the branch here, currently output nothing
-            return ''
         else:
             actual_shader = entry.split('_')[0]
             
@@ -122,7 +119,7 @@ python model.py --name {args.modelroot}/{model_dir} --dataroot {args.modelroot}/
                 raise
                 
             if 'stratified_subsample' in model_dir:
-                extra_flag += f""" --specified_ind {args.modelroot}/{model_dir}/specified_ind.npy"""
+                extra_flag += f""" --specified_ind {args.modelroot}/models/{model_dir}/specified_ind.npy"""
                 
             if 'fov' in info.keys():
                 extra_flag += ' --fov %s' % info['fov']
@@ -157,7 +154,7 @@ python model.py --name {args.modelroot}/{model_dir} --dataroot {args.modelroot}/
             
 
             cmd = f"""
-python model.py --name {args.modelroot}/{model_dir} --dataroot {args.modelroot}/datasets/{dataset_dir} --add_initial_layers --initial_layer_channels 48 --add_final_layers --final_layer_channels 48 --conv_channel_multiplier 0 --conv_channel_no 48 --dilation_remove_layer --shader_name {actual_shader} --data_from_gpu --identity_initialize --no_identity_output_layer --lpips_loss --lpips_loss_scale 0.04 --tile_only --tiled_h 320 --tiled_w 320 --render_sigma 0.3 --epoch {epoch} --save_frequency 1 --feature_normalize_lo_pct 5 --relax_clipping {extra_flag}"""
+python model.py --name {args.modelroot}/models/{model_dir} --dataroot {args.modelroot}/datasets/{dataset_dir} --add_initial_layers --initial_layer_channels 48 --add_final_layers --final_layer_channels 48 --conv_channel_multiplier 0 --conv_channel_no 48 --dilation_remove_layer --shader_name {actual_shader} --data_from_gpu --identity_initialize --no_identity_output_layer --lpips_loss --lpips_loss_scale 0.04 --tile_only --tiled_h 320 --tiled_w 320 --render_sigma 0.3 --epoch {epoch} --save_frequency 1 --feature_normalize_lo_pct 5 --relax_clipping {extra_flag}"""
             
             if args.mode in ['inference', 'accurate_timing']:
                 cmd += ' --read_from_best_validation'
@@ -175,7 +172,7 @@ python model.py --name {args.modelroot}/{model_dir} --dataroot {args.modelroot}/
                 
                 cmd += f"""
 
-python metric_evaluation.py {args.modelroot}/{eval_dir} {args.modelroot}/datasets/{gt_dir}"""
+python metric_evaluation.py {args.modelroot}/models/{eval_dir} {args.modelroot}/datasets/{gt_dir}"""
                 
                 if application == 'temporal':
                     cmd += ' all --prefix test_ground29'

@@ -445,8 +445,8 @@ def main():
         
     global model_parent_dir, dataset_parent_dir
         
-    model_parent_dir = sys.argv[1]
-    dataset_parent_dir = os.path.join(model_parent_dir, 'datasets')
+    model_parent_dir = os.path.join(sys.argv[1], 'models')
+    dataset_parent_dir = os.path.join(sys.argv[1], 'datasets')
     
     if len(sys.argv) > 2:
         mode = sys.argv[2]
