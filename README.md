@@ -1,6 +1,10 @@
 # learning_from_program_trace
 Source code for paper "Learning from Shader Program Trace"
 
+## Package dependencies
+
+The source code is developed and tested under python 3.6, TensorFlow 1.14 with CUDA 10.0. A full list of python environment can be found in environment.yml.
+
 ## Reproduce model inference results
 
 Generate script or inference commands:
