@@ -16,5 +16,7 @@ This will generate a script.sh with inference commands. Each command is commente
 This will reproduce the following result.
 
 Fig 2: result_figs/fig2.png
+
 All table results: result_figs/table.pdf
+
 All qualitative results: result_figs/fig_main.pdf
