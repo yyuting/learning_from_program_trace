@@ -1,0 +1,27 @@
+\documentclass{article}
+
+% Shader names
+\newcommand{\shadername}[1]{{\small\texttt{#1}}}
+\newcommand{\bricks}{\shadername{Bricks}}
+\newcommand{\marble}{\shadername{Marble}}
+\newcommand{\mandelbulb}{\shadername{Mandel-bulb}}
+\newcommand{\mandelbrot}{\shadername{Mandelbrot}}
+\newcommand{\oceanic}{\shadername{Oceanic}}
+\newcommand{\primitives}{\shadername{Gear}}
+\newcommand{\gear}{\shadername{Gear}}
+\newcommand{\trippy}{\shadername{Trippy}\,\shadername{Heart}}
+\newcommand{\texturemap}{\shadername{Texture}\,\shadername{Maps}}
+\newcommand{\venice}{\shadername{Venice}}
+
+\makeatletter
+\def\thickhline{%
+  \noalign{\ifnum0=`}\fi\hrule \@height \thickarrayrulewidth \futurelet
+   \reserved@a\@xthickhline}
+\def\@xthickhline{\ifx\reserved@a\thickhline
+               \vskip\doublerulesep
+               \vskip-\thickarrayrulewidth
+             \fi
+      \ifnum0=`{\fi}}
+\makeatother
+
+\begin{document}
