@@ -80,9 +80,11 @@ def get_score(name):
 
     if len(sys.argv) > 3:
         mode = sys.argv[3]
+        if mode == 'all':
+            mode = None
     else:
         mode = None
-        
+                
     all_modes = ['ssim', 'perceptual_tf', 'psnr']
         
     if mode is None:

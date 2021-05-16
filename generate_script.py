@@ -1,7 +1,7 @@
 import os
 import sys
 import argparse_util
-from generate_result_table import app_shader_dir_200
+from generate_result import app_shader_dir_200
 
 all_applications = ['denoising',
                     'simplified',
