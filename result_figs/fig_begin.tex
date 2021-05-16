@@ -1,0 +1,197 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{array,booktabs}
+\usepackage{ifpdf}
+\ifpdf
+  \pdfpageheight=11in
+  \pdfpagewidth=11in
+\else
+  \special{papersize=8.5in,11in}
+\fi
+
+% Shader names
+\newcommand{\shadername}[1]{{\small\texttt{#1}}}
+\newcommand{\bricks}{\shadername{Bricks}}
+\newcommand{\marble}{\shadername{Marble}}
+\newcommand{\mandelbulb}{\shadername{Mandel-bulb}}
+\newcommand{\mandelbrot}{\shadername{Mandelbrot}}
+\newcommand{\oceanic}{\shadername{Oceanic}}
+\newcommand{\primitives}{\shadername{Gear}}
+\newcommand{\gear}{\shadername{Gear}}
+\newcommand{\trippy}{\shadername{Trippy}\,\shadername{Heart}}
+\newcommand{\texturemap}{\shadername{Texture}\,\shadername{Maps}}
+\newcommand{\venice}{\shadername{Venice}}
+
+\newcommand{\tablegap}[0]{\\[-0.05cm]}
+
+%%%%%%%%%%%%%%%%%%%%%%%
+% macro for teaser (4 img + zoom)
+%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\ResultsFigStartTeaser}{
+\begin{tabular}{cc@{\hskip 4pt}cc@{\hskip 4pt}cc@{\hskip 4pt}cc}
+}
+
+
+\newcommand{\ResultsFigEndTeaser}[5]{
+\includegraphics[height=1.03in]{#2_gt_box.png} & \includegraphics[height=1.03in]{#2_gt_zoom.png} & \includegraphics[height=1.03in]{#2_input_box.png} & \includegraphics[height=1.03in]{#2_input_zoom.png} & \includegraphics[height=1.03in]{#2_RGBx_box.png} & \includegraphics[height=1.03in]{#2_RGBx_zoom.png} & \includegraphics[height=1.03in]{#2_ours_box.png} & \includegraphics[height=1.03in]{#2_ours_zoom.png} \tablegap
+\multicolumn{2}{c}{\small {#1}} &
+\multicolumn{2}{c}{\small {#3}} &
+\multicolumn{2}{c}{\small {#4}} &
+\multicolumn{2}{c}{\small {#5}}
+\end{tabular}
+}
+
+\newcommand{\ResultsFigTeaser}[5]{
+\ResultsFigStartTeaser
+\multicolumn{2}{c}{(a) Reference} & \multicolumn{2}{c}{(b) Simplified Input} & \multicolumn{2}{c}{(c) RGBx Baseline} & \multicolumn{2}{c}{(d) Our Result} \\
+\addlinespace[4pt]
+\ResultsFigEndTeaser{#1}{#2}{#3}{#4}{#5}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%
+% macro for main result
+%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\ResultsFigStartWithZoom}{
+\begin{tabular}{cccccc}
+}
+
+\newcommand{\ResultsFigEndWithZoom}[6]{
+ \includegraphics[height=1.03in]{#2_gt_box.png} & \includegraphics[height=1.03in]{#2_ours_box.png} & \includegraphics[height=1.03in]{#2_gt_zoom.png} & \includegraphics[height=1.03in]{#2_MSAA_zoom.png} & \includegraphics[height=1.03in]{#2_RGBx_zoom.png} & 
+\includegraphics[height=1.03in]{#2_ours_zoom.png} \tablegap
+{\small {#1}} & & 
+{\small {#3}} & 
+{\small {#6}} & 
+{\small {#5}} & 
+{\small {#4}} 
+\end{tabular}
+}
+
+\newcommand{\ResultsFigWithHeaderWithZoom}[6]{
+\ResultsFigStartWithZoom
+(a) Reference & (b) Our Result & (c) Reference & (d) Input & (e) RGBx & (f) Ours\\
+\addlinespace[4pt]
+\ResultsFigEndWithZoom{#1}{#2}{#3}{#4}{#5}{#6}
+}
+
+\newcommand{\ResultsFigNoHeaderWithZoom}[6]{
+\ResultsFigStartWithZoom
+\addlinespace[4pt]
+\ResultsFigEndWithZoom{#1}{#2}{#3}{#4}{#5}{#6}
+}
+
+\newcommand{\ResultsFigWithHeaderWithCorrectedZoom}[6]{
+\ResultsFigStartWithZoom
+(a) Reference & (b) Our Result & (c) Reference & (d) Supersample & (e) RGBx & (f) Ours\\
+\addlinespace[4pt]
+\ResultsFigEndWithCorrectedZoom{#1}{#2}{#3}{#4}{#5}{#6}
+}
+
+\newcommand{\ResultsFigNoHeaderWithCorrectedZoom}[6]{
+\ResultsFigStartWithZoom
+\addlinespace[4pt]
+\ResultsFigEndWithCorrectedZoom{#1}{#2}{#3}{#4}{#5}{#6}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%
+% macro for simplified (2 full img and 4 zooms)
+%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\ResultsFigEndInputWithZoom}[6]{
+\includegraphics[height=1.03in]{#2_gt_box.png} & \includegraphics[height=1.03in]{#2_ours_box.png} & \includegraphics[height=1.03in]{#2_gt_zoom.png} & \includegraphics[height=1.03in]{#2_input_zoom.png} & \includegraphics[height=1.03in]{#2_RGBx_zoom.png} & 
+\includegraphics[height=1.03in]{#2_ours_zoom.png} \tablegap
+{\small {#1}} & & 
+{\small {#3}} & 
+{\small {#6}} & 
+{\small {#5}} & 
+{\small {#4}} 
+\end{tabular}
+}
+
+\newcommand{\ResultsFigWithHeaderInputWithZoom}[6]{
+\ResultsFigStartWithZoom
+(a) Reference & (b) Our Result & (c) Reference & (d) Input & (e) RGBx & (f) Ours\\
+\addlinespace[4pt]
+\ResultsFigEndInputWithZoom{#1}{#2}{#3}{#4}{#5}{#6}
+}
+
+\newcommand{\ResultsFigNoHeaderInputWithZoom}[6]{
+\ResultsFigStartWithZoom
+\addlinespace[4pt]
+\ResultsFigEndInputWithZoom{#1}{#2}{#3}{#4}{#5}{#6}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%
+% macro for simplified (4 full img)
+%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\ResultsFigStartWithoutZoom}{
+\begin{tabular}{cccc}
+}
+
+\newcommand{\ResultsFigEndWithoutZoom}[5]{
+\includegraphics[height=1.03in]{#2_gt} & \includegraphics[height=1.03in]{#2_input} & \includegraphics[height=1.03in]{#2_RGBx} & \includegraphics[height=1.03in]{#2_ours} \tablegap
+{\small {#1}} & {\small {#5}} &
+{\small {#4}} & 
+{\small {#3}} 
+\end{tabular}
+}
+
+\newcommand{\ResultsFigWithHeaderWithoutZoom}[5]{
+\ResultsFigStartWithoutZoom
+(a) Reference & (b) Simplified Input & (c) RGBx Baseline & (d) Our Result \\
+\addlinespace[4pt]
+\ResultsFigEndWithoutZoom{#1}{#2}{#3}{#4}{#5}
+}
+
+\newcommand{\ResultsFigNoHeaderWithoutZoom}[5]{
+\ResultsFigStartWithoutZoom
+\addlinespace[4pt]
+\ResultsFigEndWithoutZoom{#1}{#2}{#3}{#4}{#5}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%
+% macro for post processing (3 cropped img + zoom)
+%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\ResultsFigStartThreeCol}{
+\begin{tabular}{cc@{\hskip 4pt}cc@{\hskip 4pt}cc}
+}
+
+\newcommand{\ResultsFigEndThreeCol}[4]{
+\includegraphics[height=1.03in]{#2_gt_box.png} & \includegraphics[height=1.03in]{#2_gt_zoom.png} & \includegraphics[height=1.03in]{#2_RGBx_box.png} & \includegraphics[height=1.03in]{#2_RGBx_zoom.png} & \includegraphics[height=1.03in]{#2_ours_box.png} & \includegraphics[height=1.03in]{#2_ours_zoom.png} \tablegap
+\multicolumn{2}{c}{\small {#1}} &
+\multicolumn{2}{c}{\small {#3}} &
+\multicolumn{2}{c}{\small {#4}} 
+\end{tabular}
+}
+
+\newcommand{\ResultsFigWithHeaderThreeCol}[4]{
+\ResultsFigStartThreeCol
+\multicolumn{2}{c}{(a) Reference} & \multicolumn{2}{c}{(b) RGBx Baseline} & \multicolumn{2}{c}{(c) Our Result} \\
+\addlinespace[4pt]
+\ResultsFigEndThreeCol{#1}{#2}{#3}{#4}
+}
+
+\newcommand{\ResultsFigNoHeaderThreeCol}[4]{
+\ResultsFigStartThreeCol
+\addlinespace[4pt]
+\ResultsFigEndThreeCol{#1}{#2}{#3}{#4}
+}
+
+\newcommand{\spp}{{\sc{spp}}}
+\newcommand{\nspp}[1]{{{#1}\,\spp}}
+
+\makeatletter
+\def\thickhline{%
+  \noalign{\ifnum0=`}\fi\hrule \@height \thickarrayrulewidth \futurelet
+   \reserved@a\@xthickhline}
+\def\@xthickhline{\ifx\reserved@a\thickhline
+               \vskip\doublerulesep
+               \vskip-\thickarrayrulewidth
+             \fi
+      \ifnum0=`{\fi}}
+\makeatother
+
+\begin{document}
