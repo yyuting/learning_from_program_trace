@@ -24,3 +24,9 @@ Fig 2: result_figs/fig2.png
 All table results: result_figs/table.pdf
 
 All qualitative results: result_figs/fig_main.pdf
+
+## Reference
+
+This project uses / modifies the following repositories, our paper also cites related papers.
+
+[1] [Fast Image Processing with Fully-Convolutional Networks] (https://github.com/CQFIO/FastImageProcessing)
