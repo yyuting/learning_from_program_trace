@@ -29,4 +29,7 @@ All qualitative results: result_figs/fig_main.pdf
 
 This project uses / modifies the following repositories, our paper also cites related papers.
 
-[1] [Fast Image Processing with Fully-Convolutional Networks](https://github.com/CQFIO/FastImageProcessing)
+[1] [Fast Image Processing with Fully-Convolutional Networks](https://github.com/CQFIO/FastImageProcessing) (MIT License)
+[2] [lpips-tensorflow](https://github.com/alexlee-gk/lpips-tensorflow) (BSD-2-Clause License)
+[3] [MLNet-Pytorch](https://github.com/immortal3/MLNet-Pytorch) (Apache-2.0 License)
+[4] [simplexnoise](https://github.com/pinae/simplexnoise) (GPL-3.0 License)
