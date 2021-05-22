@@ -7,7 +7,8 @@ all_applications = ['denoising',
                     'simplified',
                     'post_processing',
                     'simulation',
-                    'temporal']
+                    'temporal',
+                    'unified']
 
 all_modes = ['train',
              'inference',
@@ -69,6 +70,61 @@ python model.py --name {args.modelroot}/models/{model_dir} --dataroot {args.mode
 {cmd}
             """
             
+        return all_str
+    
+    if application == 'unified':
+        # Hard-code the command for unified network, as it's differnt from single models
+        
+        
+                
+        for idx in range(2):
+            
+            model_dir = None
+        
+            for shader in app_shader_dir_200[application].keys():
+                info = app_shader_dir_200[application][shader]
+
+                if model_dir is None:
+                    model_dir = info['dir'][idx].split('/')[0]
+                else:
+                    assert model_dir == info['dir'][idx].split('/')[0]
+                    
+            if idx == 0:
+                model_type = 'ours'
+                choose_shaders = 4
+            else:
+                model_type == 'RGBx'
+                choose_shaders = 2
+                
+            cmd = f"""
+python unified_network.py --name {args.modelroot}/models/{model_dir} --add_initial_layers --initial_layer_channels 48 --add_final_layers --final_layer_channels 48 --conv_channel_multiplier 0 --conv_channel_no 48 --dilation_remove_layer --identity_initialize --no_identity_output_layer --lpips_loss --lpips_loss_scale 0.04 --tile_only --tiled_h 320 --tiled_w 320 --use_batch --batch_size 6 --render_sigma 0.3 --save_frequency 1 --feature_normalize_lo_pct 5 --relax_clipping --dataroot_parent {args.modelroot}/datasets --no_preload --epoch 400 --choose_shaders {choose_shaders}"""
+            
+            if idx == 1:
+                cmd += ' --manual_features_only --multiple_feature_reduction_ch 389,232,744,245'
+                
+            if args.mode == 'train':
+                cmd += ' --is_train'
+            
+            if args.mode == 'validation':
+                cmd += ' --test_training --collect_validate_loss'
+            
+            if args.mode == 'inference':
+                cmd += ' --read_from_best_validation'
+                
+                for shader in app_shader_dir_200[application].keys():
+                    info = app_shader_dir_200[application][shader]
+                    
+                    eval_dir = info['dir'][idx]
+                    gt_dir = info['gt_dir']
+                
+                    cmd += f"""
+                    
+python metric_evaluation.py {args.modelroot}/models/{eval_dir} {args.modelroot}/datasets/{gt_dir}"""
+                
+            all_str += f"""
+# {args.mode} for Application unified, {model_type}
+{cmd}
+"""
         return all_str
             
         
