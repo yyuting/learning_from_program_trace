@@ -318,7 +318,7 @@ app_shader_dir_200 = {
                            '1x_1sample_unified_mandelbrot_mandelbulb_trippy_primitives_with_bg_aux_largest_capacity/test_mandelbrot'],
                    'img_idx': 30,
                    'img_zoom_bbox': [250, 250+80, 570, 570+60],
-                   'gt_dir': 'datas_mandelbrot/test_img',
+                   'gt_dir': 'datas_mandelbrot_with_bg/test_img',
                    'msaa_sample': 5,
                    'print': 'Mandelbrot'
                   },
@@ -326,20 +326,20 @@ app_shader_dir_200 = {
                            '1x_1sample_unified_mandelbrot_mandelbulb_trippy_primitives_with_bg_aux_largest_capacity/test_mandelbulb_slim'],
                    'img_idx': 20,
                    'img_zoom_bbox': [250, 250+80, 325, 325+60],
-                   'gt_dir': 'datas_mandelbulb/test_img',
+                   'gt_dir': 'datas_mandelbulb_with_bg/test_img',
                    'msaa_sample': 2,
                    'print': 'Mandelbulb'
                   },
-    'trippy': {'dir': ['1x_1sample_unified_mandelbrot_mandelbulb_trippy_primitives_with_bg_automatic_200/test_trippy_heart_new',
-                           '1x_1sample_unified_mandelbrot_mandelbulb_trippy_primitives_with_bg_aux_largest_capacity/test_trippy_heart_new'],
+    'trippy': {'dir': ['1x_1sample_unified_mandelbrot_mandelbulb_trippy_primitives_with_bg_automatic_200/test_trippy_heart',
+                           '1x_1sample_unified_mandelbrot_mandelbulb_trippy_primitives_with_bg_aux_largest_capacity/test_trippy_heart'],
                    'img_idx': 30,
                    'img_zoom_bbox': [550, 550+80, 65, 65+60],
                    'gt_dir': 'datas_trippy_new_extrapolation_subsample_2/test_img',
                    'msaa_sample': 9,
                    'print': 'Trippy Heart'
                   },
-    'gear': {'dir': ['1x_1sample_unified_mandelbrot_mandelbulb_trippy_primitives_with_bg_automatic_200/test_primitives_wheel_only_new',
-                           '1x_1sample_unified_mandelbrot_mandelbulb_trippy_primitives_with_bg_aux_largest_capacity/test_primitives_wheel_only_new'],
+    'gear': {'dir': ['1x_1sample_unified_mandelbrot_mandelbulb_trippy_primitives_with_bg_automatic_200/test_primitives_wheel_only',
+                           '1x_1sample_unified_mandelbrot_mandelbulb_trippy_primitives_with_bg_aux_largest_capacity/test_primitives_wheel_only'],
                    'img_idx': 15,
                    'img_zoom_bbox': [420, 420+80, 600, 600+60],
                    'gt_dir': 'datas_primitives_correct_test_range/test_img',
@@ -354,7 +354,8 @@ app_names = ['denoising',
              'simplified',
              'post_processing',
              'temporal',
-             'simulation']
+             'simulation',
+             'unified']
 
 
 diagonal_names = [('denoising', 'oceanic'),
@@ -385,9 +386,14 @@ def get_score(dirs, app_name):
     else:
         assert neval >= 2
         #neval = 2
+        
+    if app_name == 'unified':
+        print('here')
 
     score = -np.ones((neval, 3))
     l2_score = -np.ones((neval, 3))
+    ssim_score = -np.ones(neval)
+    psnr_score = -np.ones(neval)
     
     runtime = []
 
@@ -462,6 +468,18 @@ def get_score(dirs, app_name):
             l2_score[i][0] = l2_scores[2]
             l2_score[i][1] = (l2_scores[0] + l2_scores[1]) / 2.0
             l2_score[i][2] = (l2_scores[0] * 5 + l2_scores[1] * 5 + l2_scores[2] * 20) / 30
+            
+        if app_name not in ['simulation']:
+            
+            ssim_file = os.path.join(model_parent_dir, dir, 'ssim.txt')
+            psnr_file = os.path.join(model_parent_dir, dir, 'psnr.txt')
+            
+            ssim_score_str = open(ssim_file).read().replace('\n', '')
+            psnr_score_str = open(psnr_file).read().replace('\n', '')
+            
+            ssim_score[i] = float(ssim_score_str)
+            psnr_score[i] = float(psnr_score_str)
+                            
 
     if app_name in ['denoising', 'simplified', 'post_processing']:
         if len(runtime) != neval:
@@ -470,7 +488,7 @@ def get_score(dirs, app_name):
             print(dirs)
             raise
         
-    return score, l2_score, runtime
+    return score, l2_score, ssim_score, psnr_score, runtime
 
 def main():
     
@@ -556,7 +574,7 @@ def main():
                 assert neval >= 2
                 #neval = 2
                 
-            score, l2_score, runtime = get_score(app_data[shader_name]['dir'], app_name)
+            score, l2_score, ssim_score, psnr_score, runtime = get_score(app_data[shader_name]['dir'], app_name)
             
             bar_avg.append(score[0, 2] / score[1, 2])
             if score[0, 1] > 0:
@@ -570,6 +588,8 @@ def main():
             
             if app_name not in ['simulation']:
                 app_data[shader_name]['l2'] = l2_score
+                app_data[shader_name]['ssim'] = ssim_score
+                app_data[shader_name]['psnr'] = psnr_score
                 
             app_data[shader_name]['runtime'] = runtime
             if app_name in ['denoising', 'simplified', 'post_processing']:
@@ -592,9 +612,11 @@ def main():
         if app_name not in app_names:
             app_data = app_shader_dir_200[app_name]
             for shader_name in app_data.keys():
-                score, l2_score, _ = get_score(app_data[shader_name]['dir'], app_name)
+                score, l2_score, ssim_score, psnr_score, _ = get_score(app_data[shader_name]['dir'], app_name)
                 app_data[shader_name]['perceptual'] = score
                 app_data[shader_name]['l2'] = l2_score
+                app_data[shader_name]['ssim'] = ssim_score
+                app_data[shader_name]['psnr'] = psnr_score
 
     if 'fig2' in mode or mode == 'all':
         
@@ -669,18 +691,43 @@ def main():
         
         
         str_transpose = ""
+        
+        str_extra = """
+\setlength{\\tabcolsep}{4.0pt}
+\\begin{table}[]
+    \\begin{tabular}{c|l|c@{ / }c@{ / }cc@{ / }c@{ / }c}
+        \\hline
+        App & Shader & \multicolumn{3}{c}{RGBx} & \multicolumn{3}{c}{Ours} \\\\ \\hline
+        """
 
         #for k in range(len(app_names)):
             #app_name = app_names[k]
             
-        for app_name in sorted(app_shader_dir_200.keys()):
+        #for app_name in sorted(app_shader_dir_200.keys()):
+        for app_name in app_names:
+            if app_name not in app_shader_dir_200.keys():
+                continue
             
             if app_name in ['simulation']:
                 continue
 
             avg_ratio = np.empty([len(app_shader_dir_200[app_name].keys()), 2, 3])
                 
-            
+            if app_name == 'denoising':
+                str_extra += """
+        {\multirow{7}{*}{\\rotatebox[origin=c]{90}{Denoising}}}"""
+            elif app_name == 'simplified':
+                str_extra += """
+        {\multirow{5}{*}{\\rotatebox[origin=c]{90}{Simplified}}}"""
+            elif app_name == 'post_processing':
+                str_extra += """
+        {\multirow{3}{*}{\\rotatebox[origin=c]{90}{Post}}}"""
+            elif app_name == 'temporal':
+                str_extra += """
+        {\multirow{6}{*}{\\rotatebox[origin=c]{90}{Temporal}}}"""
+            elif app_name == 'unified':
+                str_extra += """
+        {\multirow{4}{*}{\\rotatebox[origin=c]{90}{Shared}}}"""
             
             
             
@@ -689,20 +736,20 @@ def main():
     \\vspace{-1ex}
     \setlength{\\tabcolsep}{4.0pt}
     \\begin{table}[]
-    \\begin{tabular}{l|r@{}l@{ / }r@{}lr@{\\%}l@{ / }r@{\\%}lr@{x}l@{ / }r@{x}l}
+    \\begin{tabular}{l|c@{ / }c@{ / }cc@{ / }c@{ / }cc@{ (}r@{) / }c@{ / }c}
     \\hline
 
-        Shader & \multicolumn{4}{c}{RGBx} & \multicolumn{4}{c}{Ours} & \multicolumn{4}{c}{Super} \\\\ \\hline
+        Shader & \multicolumn{3}{c}{RGBx} & \multicolumn{3}{c}{Ours} & \multicolumn{4}{c}{Supersampling} \\\\ \\hline
     """
             else:
                 str_transpose += """
     \\vspace{-1ex}
     \setlength{\\tabcolsep}{4.0pt}
     \\begin{table}[]
-    \\begin{tabular}{l|r@{}l@{ / }r@{}lr@{\\%}l@{ / }r@{\\%}l}
+    \\begin{tabular}{l|c@{ / }c@{ / }cc@{ / }c@{ / }c}
     \\hline
 
-        Shader & \multicolumn{4}{c}{RGBx} & \multicolumn{4}{c}{Ours} \\\\ \\hline
+        Shader & \multicolumn{3}{c}{RGBx} & \multicolumn{3}{c}{Ours} \\\\ \\hline
     """
                 
 
@@ -710,6 +757,33 @@ def main():
             for i in range(len(app_shader_dir_200[app_name].keys())):
                 
                 shader_name = sorted(app_shader_dir_200[app_name].keys())[i]
+                
+                print_name = shader_name
+                if print_name not in hue_shaders.keys():
+                    print_name = print_name.replace('_', '\\\\', 1)
+                    print_name = print_name.replace('_', '\\ ')
+                    
+                if app_name == 'post_processing':
+                        
+                    print_names = print_name.split('\\\\')
+                    assert len(print_names) == 2
+                    print_a = print_names[0]
+                    print_b = print_names[1]
+
+                    if 'simplified' in print_b:
+                        print_b = 'simp sharpen'
+                    
+                elif app_name == 'temporal':
+                    print_names = print_name.split('\\\\')
+                    assert len(print_names) <= 2
+                    print_a = print_names[0]
+
+                    if len(print_names) == 2:
+                        print_b = print_names[1]
+                        assert print_b == 'simplified', print_b
+                        print_b = 'simp '
+                    else:
+                        print_b = ''
                 
             
                 data = app_shader_dir_200[app_name][shader_name]
@@ -720,137 +794,151 @@ def main():
 
                 argmin_perceptual = np.argmin(data['perceptual'], 0)
                 argmin_l2 = np.argmin(data['l2'], 0)
+                argmax_ssim = np.argmax(data['ssim'])
+                argmax_psnr = np.argmax(data['psnr'])
                 if app_name == 'denoising':
                     row_data_rel = [1, 0, 2]
                 else:
                     row_data_rel = [1, 0]
                 count = 0
-
-                data_strs = [None] * 4 * len(row_data_rel)
-                avg_strs = [None] * 2 * len(row_data_rel)
-                transpose_strs = [None] * (2 * len(row_data_rel) + 2)
-
-                for row in range(len(row_data_rel)):
-                    for col in range(4):
-                        data_row = row_data_rel[row]
-                        if col < 2:
-                            field = 'perceptual'
-                            idx = col
-                            argmin_idx = argmin_perceptual[idx]
-                        else:
-                            field = 'l2'
-                            idx = col - 2
-                            argmin_idx = argmin_l2[idx]
-
-                        if row == 0:
-                            data_strs[count] = '%.1e' % data[field][1, idx]
-                        elif row == 2:
-                            # MSAA
-                            current_ratio = data[field][data_row, idx] / data[field][1, idx]
-                            data_strs[count] = round_msaa(current_ratio)
-                        else:
-                            data_strs[count] = '%02d' % (data[field][data_row, idx] / data[field][1, idx] * 100)
-
-                        if data_row == argmin_idx:
-                            data_strs[count] = '\\textbf{' + data_strs[count] + '}'
-
-                        count += 1
-                       
-                count = 0
-                count_transpose = 0
-                for row in range(len(row_data_rel)):
-                    for col in range(2):
-                        data_row = row_data_rel[row]
-                        idx = 2
-                        if col < 1:
-                            field = 'perceptual'
-                            argmin_idx = argmin_perceptual[idx]
-                        else:
-                            field = 'l2'
-                            argmin_idx = argmin_l2[idx]
-
-                        if row == 0:
-                            avg_strs[count] = '%.1e' % data[field][1, idx]
-                            
-                            abs_val = avg_strs[count]
-                            val_before, val_after = abs_val.split('e')
-                            transpose_strs[count_transpose] = val_before
-                            count_transpose += 1
-                            transpose_strs[count_transpose] = 'e' + val_after
-                            
-                        elif row == 2:
-                            # MSAA
-                            current_ratio = data[field][data_row, idx] / data[field][1, idx]
-                            avg_strs[count] = round_msaa(current_ratio)
-                            
-                            transpose_strs[count_transpose] = avg_strs[count]
-                        else:
-                            avg_strs[count] = '%02d' % (data[field][data_row, idx] / data[field][1, idx] * 100)
-                            
-                            transpose_strs[count_transpose] = avg_strs[count]
-
-                        if data_row == argmin_idx:
-                            avg_strs[count] = '\\textbf{' + avg_strs[count] + '}'
-                            
-                            transpose_strs[count_transpose] = '\\textbf{' + transpose_strs[count_transpose] + '}'
-                            if row == 0:
-                                transpose_strs[count_transpose-1] = '\\textbf{' + transpose_strs[count_transpose - 1] + '}'
-
-                        count += 1  
-                        count_transpose += 1
-                         
-
-                print_name = shader_name
-                if print_name not in hue_shaders.keys():
-                    print_name = print_name.replace('_', '\\\\', 1)
-                    print_name = print_name.replace('_', '\\ ')
-
-
-
-                if app_name == 'denoising':
                 
-                    
-                    str_transpose += """
-        \\%s & %s & %s & %s & %s & %s & & %s & & %s & & %s & \\\\ \\hline""" % ((print_name, ) + tuple(transpose_strs))
-                    
-                else:
-                  
-                    
-                    
-                    if app_name == 'post_processing':
-                        
-                        print_names = print_name.split('\\\\')
-                        assert len(print_names) == 2
-                        print_a = print_names[0]
-                        print_b = print_names[1]
-                        
-                        if 'simplified' in print_b:
-                            print_b = 'simp sharpen'
+                if app_name != 'simulation':
 
-                        
-                        str_transpose += """
-         %s & %s & %s & %s & %s & %s & & %s & \\\\ \\hline""" % ((print_b, ) + tuple(transpose_strs))
-
-                        
-                    elif app_name == 'temporal':
-                        print_names = print_name.split('\\\\')
-                        assert len(print_names) <= 2
-                        print_a = print_names[0]
-                        
-                        if len(print_names) == 2:
-                            print_b = print_names[1]
-                            assert print_b == 'simplified', print_b
-                            print_b = 'simp '
-                        else:
-                            print_b = ''
-                        
-                        str_transpose += """
-         %s\\%s & %s & %s & %s & %s & %s & & %s & \\\\ \\hline""" % ((print_b, print_a, ) + tuple(transpose_strs))
-                        
+                    if app_name == 'denoising':
+                        transpose_strs = [None] * (3 * len(row_data_rel) + 1)
                     else:
-                    
+                        transpose_strs = [None] * (3 * len(row_data_rel))
+
+                    count_transpose = 0
+                    for row in range(len(row_data_rel)):
+                        for col in range(3):
+                            data_row = row_data_rel[row]
+                            idx = 2
+                            if col == 0:
+                                field = 'perceptual'
+                                argmin_idx = argmin_perceptual[idx]
+                            elif col == 1:
+                                field = 'ssim'
+                                argmin_idx = argmax_ssim
+                            else:
+                                field = 'psnr'
+                                argmin_idx = argmax_psnr
+
+                            if col == 0:
+                                abs_val = '%.1e' % data[field][data_row, idx]
+
+                                if row == 0:
+                                    transpose_strs[count_transpose] = abs_val
+                                elif row == 1:
+                                    rel_val = '%02d' % (data[field][data_row, 2] / data[field][1, 2] * 100)
+                                    transpose_strs[count_transpose] = abs_val + '(' + rel_val + '\\%)'
+                                else:
+                                    current_ratio = round_msaa(data[field][data_row, idx] / data[field][1, idx])
+                                    #transpose_strs[count_transpose] = abs_val + ' (' + current_ratio + 'x)'
+                                    transpose_strs[count_transpose] = abs_val
+                                    count_transpose += 1
+                                    transpose_strs[count_transpose] = current_ratio + 'x'
+                            elif col == 1:
+                                # SSIM
+                                transpose_strs[count_transpose] = '%.3f' % data[field][data_row]
+                            else:
+                                # PSNR
+                                transpose_strs[count_transpose] = '%.2f' % data[field][data_row]
+
+                            if data_row == argmin_idx:
+
+                                transpose_strs[count_transpose] = '\\textbf{' + transpose_strs[count_transpose] + '}'
+
+                            count_transpose += 1
+                            
+                    if app_name == 'denoising':
+
+
                         str_transpose += """
-         \\%s & %s & %s & %s & %s & %s & & %s & \\\\ \\hline""" % ((print_name, ) + tuple(transpose_strs))
+            \\%s & %s & %s & %s & %s & %s & %s & %s & %s & %s & %s \\\\ \\hline""" % ((print_name, ) + tuple(transpose_strs))
+
+                    else:
+
+
+
+                        if app_name == 'post_processing':
+
+                            str_transpose += """
+             %s & %s & %s & %s & %s & %s & %s \\\\ \\hline""" % ((print_b, ) + tuple(transpose_strs))
+
+
+                        elif app_name == 'temporal':
+
+                            str_transpose += """
+             %s\\%s & %s & %s & %s & %s & %s & %s \\\\ \\hline""" % ((print_b, print_a, ) + tuple(transpose_strs))
+
+                        else:
+
+                            str_transpose += """
+             \\%s & %s & %s & %s & %s & %s & %s \\\\ \\hline""" % ((print_name, ) + tuple(transpose_strs))
+                        
+                if app_name not in ['simulation']:
+                    count_transpose = 0
+                    extra_strs = [None] * 6
+                    for row in range(2):
+                        for col in range(4):
+                            data_row = row_data_rel[row]
+                            if col == 0:
+                                field = 'perceptual'
+                                argmin_idx = argmin_perceptual[2]
+                            elif col == 1:
+                                continue
+                                field = 'l2'
+                                argmin_idx = argmin_l2[2]
+                            elif col == 2:
+                                field = 'ssim'
+                                argmin_idx = argmax_ssim
+                            else:
+                                field = 'psnr'
+                                argmin_idx = argmax_psnr
+                                
+                            if col < 2:
+                                
+                                abs_val = '%.1e' % data[field][data_row, 2]
+                                
+                                if row == 0:
+                                    extra_strs[count_transpose] = abs_val
+                                    #val_before, val_after = abs_val.split('e')
+                                    #extra_strs[count_transpose] = val_before
+                                    #count_transpose += 1
+                                    #extra_strs[count_transpose] = 'e' + val_after
+                                else:
+                                    rel_val = '%02d' % (data[field][data_row, 2] / data[field][1, 2] * 100)
+                                    extra_strs[count_transpose] = abs_val + ' (' + rel_val + '\\%)'
+                                    #extra_strs[count_transpose] = '%02d' % (data[field][data_row, 2] / data[field][1, 2] * 100)
+                            elif col == 2:
+                                # SSIM
+                                extra_strs[count_transpose] = '%.3f' % data[field][data_row]
+                            else:
+                                # PSNR
+                                extra_strs[count_transpose] = '%.2f' % data[field][data_row]
+                            
+                            if data_row == argmin_idx:
+                                extra_strs[count_transpose] = '\\textbf{' + extra_strs[count_transpose] + '}'
+                                    
+                            count_transpose += 1
+                            
+                    if app_name in ['post_processing', 'temporal']:
+                        current_print = '\\' + print_a + '\ ' + print_b
+                    else:
+                        current_print = '\\' + print_name
+
+                    str_extra += """ & %s & %s & %s & %s & %s & %s & %s \\\\ 
+    """ % ((current_print, ) + tuple(extra_strs))
+                    
+                    if i == len(app_shader_dir_200[app_name].keys()) - 1:
+                        str_extra += """ \\hline """
+                    else:
+                        str_extra += """ \cline{2-8} 
+                        """
+
+
+                
 
             
             print('avg ratio for', app_name)
@@ -865,15 +953,35 @@ def main():
     \end{table}
     """ % app_name.replace('_', '\\ ')
             
+        
+            
         str_transpose = open('result_figs/table_begin.tex').read() + str_transpose + open('result_figs/table_end.tex').read()
 
         open('result_figs/table.tex', 'w').write(str_transpose)
+        
+        
         
         try:
             os.system('cd result_figs; pdflatex table.tex; cd ..')
             print('Table compiled as result_figs/table.pdf')
         except:
             print('pdflatex compilation failed, table tex file saved in result_figs/table.tex')
+            
+        
+        
+        str_extra = str_extra + """
+    \end{tabular}
+    \caption{}
+    \end{table}
+    """
+        str_extra = open('result_figs/table_begin.tex').read() + str_extra + open('result_figs/table_end.tex').read()
+        open('result_figs/table_extra.tex', 'w').write(str_extra)
+        
+        #try:
+        #    os.system('cd result_figs; pdflatex table_extra.tex; cd ..')
+        #    print('Table with extra PSNR and SSIM data compiled as result_figs/table_extra.pdf')
+        #except:
+        #    print('pdflatex compilation failed, table extra tex file saved in result_figs/table_extra.tex')
         
     
     
@@ -1114,6 +1222,207 @@ def main():
             print('Table compiled as result_figs/fig_main.pdf')
         except:
             print('pdflatex compilation failed, table tex file saved in result_figs/fig_main.tex')
+            
+    if 'html' in mode or mode == 'all':
+        html_img_format = '.jpg'
+        
+        # generate images for html viewer
+        base_dir = os.path.join(sys.argv[1], 'html_viewer/images')
+        if not os.path.exists(base_dir):
+            os.mkdir(base_dir)
+            
+        app_name_str = ''
+
+        for k in range(len(app_names)):
+            app_name = app_names[k]
+
+            if app_name in ['simulation', 'unified']:
+                continue
+
+            if app_name == 'post_processing':
+                app_name_dir = 'post'
+                app_name_print = 'Post Processing'
+            elif app_name == 'simplified':
+                app_name_dir = 'simplification'
+                app_name_print = 'Simplification'
+            else:
+                app_name_dir = app_name
+                if app_name == 'denoising':
+                    app_name_print = 'Denoising'
+                elif app_name == 'temporal':
+                    app_name_print = 'Temporal Coherence'
+                else:
+                    raise
+                    
+            app_name_str += '%s,%s\n' % (app_name_dir, app_name_print)
+            
+            shader_name_str = ''
+
+            app_name_dir = os.path.join(base_dir, app_name_dir)
+            if not os.path.exists(app_name_dir):
+                os.mkdir(app_name_dir)
+                
+            if app_name == 'denoising':
+                shader_names = ['oceanic',
+                                'bricks',
+                                'gear',
+                                'mandelbrot',
+                                'mandelbulb',
+                                'venice',
+                                'trippy',
+                               ]
+            elif app_name == 'simplified':
+                shader_names = ['venice',
+                                'trippy',
+                                'bricks',
+                                'mandelbulb',
+                                'mandelbrot'
+                               ]
+            elif app_name == 'post_processing':
+                shader_names = ['mandelbulb_blur',
+                                'trippy_sharpen',
+                                'trippy_simplified_sharpen'
+                               ]
+            elif app_name == 'temporal':
+                shader_names = ['trippy',
+                                'trippy_simplified',
+                               'mandelbrot',
+                               'mandelbrot_simplified',
+                               'mandelbulb',
+                               'mandelbulb_simplified'
+                ]
+            
+            #for shader_name in app_shader_dir_200[app_name].keys():
+            for shader_name in shader_names:
+                shader_dir = os.path.join(app_name_dir, shader_name)
+                if not os.path.exists(shader_dir):
+                    os.mkdir(shader_dir)
+                    
+                data = app_shader_dir_200[app_name][shader_name]
+
+                if 'img_idx' in data.keys() or 'other_view' in data.keys():
+                    
+                    print(app_name, shader_name)
+                    
+                    shader_name_str += '%s,%s\n' % (shader_name, data['print'])
+                    
+                    conditions_str = ''
+
+                    if 'img_idx' in data.keys():
+                        
+                        if shader_name == 'mandelbrot' and use_gamma_corrected:
+                            for i in range(len(data['dir'])):
+                                if data['dir'][i].endswith('/'):
+                                    data['dir'][i] = data['dir'][i][:-1]
+                                if 'gamma_corrected' not in data['dir'][i]:
+                                    data['dir'][i] = data['dir'][i] + '_gamma_corrected'
+                            if data['gt_dir'].endswith('/'):
+                                data['gt_dir'] = data['gt_dir']
+                            if 'gamma_corrected' not in data['gt_dir']:
+                                data['gt_dir'] = data['gt_dir'] + '_gamma_corrected'
+
+
+                        orig_imgs = []
+                        for i in range(len(data['dir'])):
+                            
+                            if app_name in ['denoising', 'simplified'] and i == len(data['dir']) - 1:
+                                dir_parent, dir_base = os.path.split(data['dir'][i])
+                                current_dir = os.path.join(dir_parent, dir_base)
+                            else:
+                                current_dir = data['dir'][i]
+                                                    
+                            if app_name == 'temporal':
+                                orig_imgs.append(os.path.join(model_parent_dir, current_dir, '%06d27.png' % data['img_idx']))
+                            else:
+                                orig_imgs.append(os.path.join(model_parent_dir, current_dir, '%06d.png' % data['img_idx']))
+                        if app_name == 'temporal':
+                            gt_img = os.path.join(dataset_parent_dir, data['gt_dir'], 'test_ground29%05d.png' % (data['img_idx']-1))
+                        else:
+                            gt_files = sorted(os.listdir(os.path.join(dataset_parent_dir, data['gt_dir'])))
+                            gt_img = os.path.join(dataset_parent_dir, data['gt_dir'], gt_files[data['img_idx']-1])
+
+                        orig_imgs = [gt_img] + orig_imgs
+                    else:
+                            
+                        orig_imgs = []
+                        for i in range(len(data['other_view'])):
+                            if i == 0:
+                                other_view_filename = os.path.join(dataset_parent_dir, data['other_view'][i])
+                            else:
+                                other_view_filename = os.path.join(model_parent_dir, data['other_view'][i])
+                            orig_imgs.append(other_view_filename)
+                            
+                    if 'gamma_correction' in data.keys():
+                        for i in range(len(orig_imgs)):
+                            orig_imgs[i] = skimage.exposure.adjust_gamma(skimage.io.imread(orig_imgs[i]), data['gamma_correction'])
+
+                    for i in range(len(orig_imgs)):
+                        src = orig_imgs[i]
+                        if i == 0:
+                            dst_name = 'reference'
+                            condition_print = 'Reference'
+                            rel_perceptual = 0
+                            rel_l2 = 0
+                            rel_psnr = None
+                            rel_ssim = 1
+                        elif i == 1:
+                            dst_name = 'ours'
+                            condition_print = 'Ours'
+                            rel_perceptual = int(100 * data['perceptual'][0, 2] / data['perceptual'][1, 2])
+                            rel_l2 = int(100 * data['l2'][0, 2] / data['l2'][1, 2])
+                            rel_psnr = data['psnr'][0]
+                            rel_ssim = data['ssim'][0]
+                        elif i == 2:
+                            dst_name = 'baseline'
+                            condition_print = 'RGBx Baseline'
+                            rel_perceptual = 100
+                            rel_l2 = 100
+                            rel_psnr = data['psnr'][1]
+                            rel_ssim = data['ssim'][1]
+                        elif i == 3:
+                            if app_name == 'denoising':
+                                dst_name = 'baseline2'
+                                condition_print = 'SuperSampling Baseline'
+                            else:
+                                dst_name = 'input'
+                                condition_print = 'Input'
+                            try:
+                                rel_perceptual = int(100 * data['perceptual'][2, 2] / data['perceptual'][1, 2])
+                                rel_l2 = int(100 * data['l2'][2, 2] / data['l2'][1, 2])
+                                rel_psnr = data['psnr'][2]
+                                rel_ssim = data['ssim'][2]
+                            except:
+                                print(shader_name, app_name)
+                                raise
+                        else:
+                            raise
+                        dst = os.path.join(shader_dir, dst_name + html_img_format)
+                        
+                        if rel_psnr is None:
+                            psnr_str = 'NA'
+                        else:
+                            psnr_str = '%.2f' % rel_psnr
+                        
+                        if isinstance(src, 'a'.__class__):
+                            if src.endswith(html_img_format):
+                                shutil.copyfile(src, dst)
+                            else:
+                                src = skimage.io.imread(src)
+                                skimage.io.imsave(dst, src)
+                        else:
+                            skimage.io.imsave(dst, src)
+                        
+                        caption = '%s / %s / %s' % (app_name_print, data['print'], condition_print)
+                        #caption += ' / Relative Perceptual Error: %d%%; Relative L2 Error: %d%%.' % (rel_perceptual, rel_l2)
+                        caption += ' / Relative Perceptual Error: %d%%; SSIM: %.3f; PSNR: %s.' % (rel_perceptual, rel_ssim, psnr_str)
+
+                        conditions_str += '%s,%s,%s\n' % (dst_name + html_img_format, condition_print, caption)
+                        
+                    open(os.path.join(shader_dir, 'conditions.csv'), 'w').write(conditions_str)
+            
+            open(os.path.join(app_name_dir, 'shaders.csv'), 'w').write(shader_name_str)
+            
+        open(os.path.join(base_dir, 'applications.csv'), 'w').write(app_name_str)
 
 if __name__ == '__main__':
     main()
