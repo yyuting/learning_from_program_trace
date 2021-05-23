@@ -116,7 +116,8 @@ app_shader_dir_200 = {
                'msaa_sample': 4,
                'print': 'Trippy Heart',
                'RGBx_ch': 744,
-               'fov': 'small'
+               'fov': 'small',
+               'every_nth': 2
               },
     'oceanic': {'dir': ['1x_1sample_oceanic_all/test',
                 '1x_1sample_oceanic_aux_largest_capacity/test',
@@ -241,7 +242,8 @@ app_shader_dir_200 = {
                'img_idx': 30,
                'gt_dir': 'datas_trippy_temporal_new_extrapolation_subsample_2/test_img',
                'fov': 'small', 
-               'RGBx_ch': 744
+               'RGBx_ch': 744,
+               'every_nth': 2
                   },
     'mandelbrot_simplified': {'dir': ['1x_1sample_mandelbrot_simplified_temporal_with_bg_non_gan_on_const_all/test',
                               '1x_1sample_mandelbrot_simplified_temporal_with_bg_non_gan_on_const_aux_largest_capacity/test'],
@@ -293,7 +295,8 @@ app_shader_dir_200 = {
                        'gt_dir': 'datas_trippy_new_extrapolation_local_laplacian_subsample_2/test_img',
                        'print': 'Trippy Heart Sharpen',
                        'fov': 'small',
-                       'RGBx_ch': 744
+                       'RGBx_ch': 744,
+                       'every_nth': 2
                       },
     'trippy_simplified_sharpen': {'dir': ['1x_1sample_trippy_simplified_local_laplacian_stratified_subsample_4/test',
                                      '1x_1sample_trippy_simplified_local_laplacian_aux_largest_capacity/test'],
@@ -336,7 +339,8 @@ app_shader_dir_200 = {
                    'img_zoom_bbox': [550, 550+80, 65, 65+60],
                    'gt_dir': 'datas_trippy_new_extrapolation_subsample_2/test_img',
                    'msaa_sample': 9,
-                   'print': 'Trippy Heart'
+                   'print': 'Trippy Heart',
+                   'every_nth': 2
                   },
     'gear': {'dir': ['1x_1sample_unified_mandelbrot_mandelbulb_trippy_primitives_with_bg_automatic_200/test_primitives_wheel_only',
                            '1x_1sample_unified_mandelbrot_mandelbulb_trippy_primitives_with_bg_aux_largest_capacity/test_primitives_wheel_only'],
@@ -540,33 +544,7 @@ def main():
         app_data = app_shader_dir_200[app_name]
         
         for shader_name in sorted(app_data.keys()):
-
-
-            if 'simplified' in shader_name or 'simplified' in app_name:
-                bar_edge_width.append(1)
-                simplified_shader_idx.append(len(bar_x_ticks))
-            else:
-                bar_edge_width.append(0)
-                full_shader_idx.append(len(bar_x_ticks))
-
-            for name in hue_shaders.keys():
-                if shader_name.startswith(name):
-                    current_hue = hue_shaders[name]
-                    current_col = colorsys.hsv_to_rgb(*hue_shaders[name])
-                    bar_x_ticks.append(name)
-                    break
-
-            #current_col = colorsys.hsv_to_rgb(current_hue, 1, 1)
-            bar_col.append(current_col)
-
-            if app_name == 'post_processing':
-                if 'blur' in shader_name:
-                    bar_x_ticks[-1] += '_blur'
-                elif 'sharpen' in shader_name:
-                    bar_x_ticks[-1] += '_sharpen'
-                else:
-                    raise
-
+            
             neval = len(app_data[shader_name]['dir'])
             if app_name == 'denoising':
                 assert neval == 3
@@ -599,6 +577,38 @@ def main():
                     median_runtime = float(time_vals[0])
                     base_runtime = median_runtime
                 app_data[shader_name]['base_runtime'] = base_runtime
+                
+            if app_name == 'unified':
+                continue
+
+
+            if 'simplified' in shader_name or 'simplified' in app_name:
+                bar_edge_width.append(1)
+                simplified_shader_idx.append(len(bar_x_ticks))
+            else:
+                bar_edge_width.append(0)
+                full_shader_idx.append(len(bar_x_ticks))
+
+            for name in hue_shaders.keys():
+                if shader_name.startswith(name):
+                    current_hue = hue_shaders[name]
+                    current_col = colorsys.hsv_to_rgb(*hue_shaders[name])
+                    bar_x_ticks.append(name)
+                    break
+
+            #current_col = colorsys.hsv_to_rgb(current_hue, 1, 1)
+            bar_col.append(current_col)
+
+            if app_name == 'post_processing':
+                if 'blur' in shader_name:
+                    bar_x_ticks[-1] += '_blur'
+                elif 'sharpen' in shader_name:
+                    bar_x_ticks[-1] += '_sharpen'
+                else:
+                    raise
+
+        if app_name == 'unified':
+            continue
 
         slice_end[k] = len(bar_x_ticks) - 1 + 0.5
         bar_x_ticks.append('')
@@ -1001,7 +1011,7 @@ def main():
             
             app_name = app_names[k]
             
-            if app_name in ['temporal', 'simulation']:
+            if app_name in ['temporal', 'simulation', 'unified']:
                 continue
             
             fig_start = True
