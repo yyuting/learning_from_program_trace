@@ -147,6 +147,11 @@ python metric_evaluation.py {args.modelroot}/models/{eval_dir} {args.modelroot}/
         else:
             epoch = 400
             
+        if 'every_nth' in info.keys():
+            every_nth = info['every_nth']
+        else:
+            every_nth = 1
+            
         for idx in range(len(info['dir'])):
             model_dir = info['dir'][idx].split('/')[0]
             
@@ -206,6 +211,9 @@ python metric_evaluation.py {args.modelroot}/models/{eval_dir} {args.modelroot}/
                 extra_flag += ' --texture_maps %s/datasets/bricks_texture.npy' % args.modelroot
             elif actual_shader.startswith('venice'):
                 extra_flag += ' --texture_maps %s/datasets/venice_texture.npy' % args.modelroot
+                
+            if every_nth > 1:
+                extra_flag += ' --every_nth %s' % every_nth
                 
             
 

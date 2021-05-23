@@ -160,11 +160,99 @@ def get_tensors(dataroot, name, camera_pos, shader_time, output_type='remove_con
     else:
         compiler_problem_full_name = os.path.abspath(os.path.join(name, 'compiler_problem%d.py' % compiler_problem_idx))
     if not os.path.exists(compiler_problem_full_name):
-        print('Error! No compiler_problem.py found in target directory: %s' % name)
-        print('Because the compiler source code needs significant clean-up, it is not released yet.')
-        print('The current released pipeline is therefore unable to translate a DSL program to TF program.')
-        print('Please specify the target directory to be the ones containing trained models, or copy compiler_problem.py in those directories to the new target directory')
-        raise
+        if shader_name == 'bricks':
+            shader_args = ' render_bricks_normal_texture ' + geometry + ' none '
+        elif shader_name == 'bricks_simplified':
+            shader_args = ' render_bricks_normal_texture_simplified_proxy ' + geometry + ' none '
+        elif shader_name == 'mandelbrot':
+            shader_args = ' render_mandelbrot_tile_radius ' + geometry + ' none '
+        elif shader_name == 'mandelbrot_simplified':
+            shader_args = ' render_mandelbrot_tile_radius_short_05 ' + geometry + ' none '
+        elif shader_name == 'mandelbulb':
+            shader_args = ' render_mandelbulb_slim ' + geometry + ' none'
+        elif shader_name == 'mandelbulb_simplified':
+            shader_args = ' render_mandelbulb_slim_simplified_proxy ' + geometry + ' none'
+        elif shader_name == 'trippy':
+            shader_args = ' render_trippy_heart ' + geometry + ' none'
+        elif shader_name == 'trippy_simplified':
+            shader_args = ' render_trippy_heart_simplified_proxy ' + geometry + ' none'
+        elif shader_name == 'gear':
+            shader_args = ' render_primitives_wheel_only ' + geometry + ' none'
+        elif shader_name == 'venice':
+            shader_args = ' render_venice ' + geometry + ' none'
+        elif shader_name == 'venice_simplified':
+            shader_args = ' render_venice_simplified_proxy_20_100 ' + geometry + ' none'
+        elif shader_name == 'oceanic':
+            shader_args = ' render_oceanic_simple_all_raymarching ' + geometry + ' none'
+        elif shader_name == 'boids_coarse':
+            shader_args = ' render_boids_coarse ' + geometry + ' none'
+        else:
+            shader_args = ' render_' + shader_name + ' ' + geometry + ' none' 
+            
+        render_util_dir = os.path.abspath('apps')
+        
+        render_single_full_name = os.path.abspath(os.path.join(render_util_dir, 'render_single.py'))
+        cwd = os.getcwd()
+        os.chdir(render_util_dir)
+        render_single_cmd = 'python ' + render_single_full_name + ' ' + os.path.join(cwd, name) + shader_args + ' --is-tf --code-only --log-intermediates --no_compute_g --SELECT_FEATURE_THRE %d --log_intermediates_subset_level 1 --collect_loop_statistic ' % SELECT_FEATURE_THRE
+        
+        if first_last_only:
+            render_single_cmd = render_single_cmd + ' --first_last_only'
+        if last_only:
+            assert not first_last_only
+            render_single_cmd = render_single_cmd + ' --last_only'
+        if subsample_loops > 0:
+            assert not first_last_only
+            assert not last_only
+            render_single_cmd = render_single_cmd + ' --subsample_loops ' + str(subsample_loops)
+        if last_n > 0:
+            assert not first_last_only
+            assert not last_only
+            assert subsample_loops < 0
+            render_single_cmd = render_single_cmd + ' --last_n ' + str(last_n)
+        if first_n > 0:
+            assert not first_last_only
+            assert not last_only
+            assert subsample_loops < 0
+            assert last_n < 0
+            render_single_cmd = render_single_cmd + ' --first_n ' + str(first_n)
+        if first_n_no_last > 0:
+            assert not first_last_only
+            assert not last_only
+            assert subsample_loops < 0
+            assert last_n < 0
+            assert first_n < 0
+            render_single_cmd = render_single_cmd + ' --first_n_no_last ' + str(first_n_no_last)
+        if mean_var_only:
+            assert not first_last_only
+            assert not last_only
+            assert subsample_loops < 0
+            assert last_n < 0
+            assert first_n < 0
+            assert first_n_no_last < 0
+            render_single_cmd = render_single_cmd + ' --mean_var_only'
+        if every_nth > 0:
+            render_single_cmd = render_single_cmd + ' --every_nth ' + str(every_nth)
+        if every_nth_stratified:
+            stratified_random_file = os.path.join(dataroot, 'stratified_random_file.npy')
+            render_single_cmd = render_single_cmd + ' --every_nth_stratified --stratified_random_file ' + stratified_random_file
+        if automatic_subsample:
+            render_single_cmd = render_single_cmd + ' --automatic_subsample'
+        if automatic_subsample or automate_raymarching_def:
+            render_single_cmd = render_single_cmd + ' --automate_raymarching_def'
+        if log_only_return_def_raymarching:
+            render_single_cmd = render_single_cmd + ' --log_only_return_def_raymarching'
+        if shader_name.startswith('boids'):
+            render_single_cmd = render_single_cmd + ' --n_boids %d' % n_boids
+            
+        entire_cmd = 'cd ' + render_util_dir + ' && ' + render_single_cmd + ' && cd ' + cwd
+        ans = os.system(entire_cmd)
+        
+        print(ans)
+        os.chdir(cwd)
+        
+        if compiler_problem_idx >= 0:
+            os.rename(os.path.join(name, 'compiler_problem.py'), compiler_problem_full_name)
         
     spec = importlib.util.spec_from_file_location("module.name", compiler_problem_full_name)
     compiler_module = importlib.util.module_from_spec(spec)
