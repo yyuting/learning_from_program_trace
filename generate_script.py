@@ -14,8 +14,7 @@ all_modes = ['train',
              'inference',
              'validation',
              'accurate_timing',
-             'prepare_dataset',
-             'analyze']
+             'prepare_dataset']
 
 def generate_dataset_script(application, args):
     
@@ -183,9 +182,7 @@ def generate_script(application, args):
     
     if args.mode == 'prepare_dataset':
         return generate_dataset_script(application, args)
-    
-    if args.mode == 'analyze' and application not in ['denoising', 'simplified']:
-        return ''
+
     
     entries = app_shader_dir_200[application].keys()
     
@@ -326,9 +323,7 @@ python metric_evaluation.py {args.modelroot}/models/{eval_dir} {args.modelroot}/
             every_nth = 1
             
         for idx in range(len(info['dir'])):
-            
-            if args.mode == 'analyze' and idx > 0:
-                continue
+
             
             model_dir = info['dir'][idx].split('/')[0]
             
@@ -423,15 +418,6 @@ python metric_evaluation.py {args.modelroot}/models/{eval_dir} {args.modelroot}/
                 
                 if application == 'temporal':
                     cmd += ' all --prefix test_ground29'
-                    
-            if args.mode == 'analyze':
-                cmd = f"""
-{cmd} --read_from_best_validation --get_col_aux_inds
-
-{cmd} --read_from_best_validation --test_training
-
-{cmd} --read_from_best_validation --test_training --analyze_channel --analyze_current_only
-"""
                 
             all_str += f"""
 # {args.mode} for Application {application}, shader {actual_shader}, {model_type}
