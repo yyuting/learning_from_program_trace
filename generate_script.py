@@ -13,25 +13,198 @@ all_applications = ['denoising',
 all_modes = ['train',
              'inference',
              'validation',
-             'accurate_timing']
+             'accurate_timing',
+             'prepare_dataset',
+             'analyze']
+
+def generate_dataset_script(application, args):
+    
+    if application == 'unified':
+        msg = '#Unified does not need a different dataset, it can be trained using existing dataset.'
+        print(msg[1:])
+        return msg
+        
+        
+    shaders = app_shader_dir_200[application].keys()
+    
+    all_str = """
+
+cd apps
+    """
+        
+    for shader in shaders:
+                
+        shader_filename = app_shader_dir_200[application][shader]['shader']
+        shader_filename_short = shader_filename.split('.')[0][7:]
+        
+        dataset_dir = app_shader_dir_200[application][shader]['gt_dir'].split('/')[0]
+        
+        if application == 'simulation':
+            gt_shader_filename = app_shader_dir_200[application][shader]['gt_shader']
+        else:
+            gt_shader_filename = shader_filename
+            
+        geometry = app_shader_dir_200[application][shader]['geometry']
+        
+        all_str += f"""
+        
+# {application} / {shader}
+"""
+        
+        need_generate_dataset = False
+        if application in ['denoising', 'simulation']:
+            need_generate_dataset = True
+        if application in ['temporal', 'post_processing'] and 'simplified' not in shader:
+            need_generate_dataset = True
+        
+        
+        if need_generate_dataset:
+            
+            if application == 'denoising':
+                all_str += f"""
+                
+python {shader_filename}.py sample_camera_pos {args.modelroot}
+                
+python generate_tiled_score.py {args.modelroot}/preprocess/{shader}/train/{shader_filename_short}_{geometry}_normal_none train_noisy {args.modelroot}/saliency/{shader}_train {args.modelroot}/models/MLNet.model
+
+python sample_pyramid.py {args.modelroot}/saliency/{shader}_train/tiles {args.modelroot}/preprocess/{shader} train
+
+python update_dataset.py {args.modelroot}/saliency/{shader}_train/tiles {args.modelroot}/preprocess/{shader} train
+
+python generate_tiled_score.py {args.modelroot}/preprocess/{shader}/validate/{shader_filename_short}_{geometry}_normal_none validate_noisy {args.modelroot}/saliency/{shader}_validate {args.modelroot}/models/MLNet.model
+
+python sample_pyramid.py {args.modelroot}/saliency/{shader}_validate/tiles {args.modelroot}/preprocess/{shader} validate
+
+python update_dataset.py {args.modelroot}/saliency/{shader}_validate/tiles {args.modelroot}/preprocess/{shader} validate
+
+mv {args.modelroot}/preprocess/{shader}/test*.npy {args.modelroot}/datasets/{dataset_dir}
+
+mv {args.modelroot}/saliency/{shader}_train/tiles/train*.npy {args.modelroot}/datasets/{dataset_dir}
+
+mv {args.modelroot}/saliency/{shader}_validate/tiles/validate*.npy {args.modelroot}/datasets/{dataset_dir}
+"""
+            elif application == 'temporal':
+                
+                denoising_dataset_dir = app_shader_dir_200['denoising'][shader]['gt_dir'].split('/')[0]
+                
+                all_str += f"""
+mkdir -p {args.modelroot}/datasets/{dataset_dir}
+
+ln -s {args.modelroot}/datasets/{denoising_dataset_dir}/*.npy {args.modelroot}/datasets/{dataset_dir}
+"""
+            elif application == 'post_processing':
+                
+                denoising_dataset_dir = app_shader_dir_200['denoising'][shader.split('_')[0]]['gt_dir'].split('/')[0]
+                
+                all_str += f"""
+mkdir -p {args.modelroot}/datasets/{dataset_dir}
+
+ln -s {args.modelroot}/datasets/{denoising_dataset_dir}/*.npy {args.modelroot}/datasets/{dataset_dir}
+"""
+            
+            if application in ['temporal', 'denoising', 'simulation']:
+                if application == 'temporal':
+                    generate_mode = 'generate_temporal_dataset'
+                else:
+                    generate_mode = 'generate_dataset'
+
+                all_str += f"""
+python {gt_shader_filename}.py {generate_mode} {args.modelroot}
+
+"""
+            else:
+                assert application == 'post_processing'
+                
+                if 'sharpen' in shader:
+                    all_str += f"""
+python local_laplacian_postprocessing.py {args.modelroot}/datasets/{denoising_dataset_dir}/train_img {args.modelroot}/datasets/{dataset_dir}/train_img
+
+python local_laplacian_postprocessing.py {args.modelroot}/datasets/{denoising_dataset_dir}/test_img {args.modelroot}/datasets/{dataset_dir}/test_img
+
+python local_laplacian_postprocessing.py {args.modelroot}/datasets/{denoising_dataset_dir}/validate_img {args.modelroot}/datasets/{dataset_dir}/validate_img
+"""
+                else:
+                    print('TODO: finish for blur')
+                    continue
+        else:
+            if application == 'simplified':
+                orig_dataset_dir = app_shader_dir_200['denoising'][shader]['gt_dir'].split('/')[0]
+            else:
+                assert 'simplified' in shader
+                
+                shader_short = shader.split('_')[0]
+                orig_feature_dataset_dir = app_shader_dir_200['simplified'][shader_short]['gt_dir'].split('/')[0]
+                
+                if application == 'temporal':
+                    orig_dataset_dir = app_shader_dir_200[application][shader_short]['gt_dir'].split('/')[0]
+                else:
+                    orig_dataset_dir = app_shader_dir_200[application][shader.replace('_simplified', '')]['gt_dir'].split('/')[0]
+                
+                all_str += f"""
+mkdir -p {args.modelroot}/datasets/{dataset_dir}
+                
+ln -s {args.modelroot}/datasets/{orig_feature_dataset_dir}/feature*.npy {args.modelroot}/datasets/{dataset_dir}
+"""
+            
+            all_str += f"""
+# Simplified applications uses the same ground truth as the original dataset
+
+ln -s {args.modelroot}/datasets/{orig_dataset_dir}/t* {args.modelroot}/datasets/{dataset_dir}
+
+ln -s {args.modelroot}/datasets/{orig_dataset_dir}/v* {args.modelroot}/datasets/{dataset_dir}
+
+"""
+            
+        need_preprocess_raw = True
+        if application in ['temporal', 'post_processing']:
+            need_preprocess_raw = False
+           
+        if need_preprocess_raw:
+            all_str += f"""
+        
+python {shader_filename}.py collect_raw {args.modelroot}
+
+python preprocess_raw_data.py --base_dirs {args.modelroot}/preprocess/{shader}/train --shadername {shader_filename} --geometry {geometry} --lo_pct 5
+
+mv {args.modelroot}/preprocess/{shader}/train/{shader_filename_short}_{geometry}_normal_none/feature*.npy {args.modelroot}/datasets/{dataset_dir}
+"""
+        
+    msg = '#Warning! Executing this script will overwrite any existing dataset in the modelroot path.'
+    
+    print(msg[1:])
+    
+    all_str = msg + all_str + """
+cd ..
+    """
+        
+    return all_str
 
 def generate_script(application, args):
+    
+    if args.mode == 'prepare_dataset':
+        return generate_dataset_script(application, args)
+    
+    if args.mode == 'analyze' and application not in ['denoising', 'simplified']:
+        return ''
     
     entries = app_shader_dir_200[application].keys()
     
     all_str = ''
     
     if args.mode == 'validation':
-        warning_msg = 'Note! Due to the storage limit on anonymous Google Drive account, we did not include validation and training dataset. This is only an example showing how to apply validation after training finishes, actually running the code will fail because the validation dataset and intermediate models are not included. The output of this command can be found in the directory of each model, as validation.png and validation.npy.'
+        warning_msg = 'Note! Due to the storage limit on anonymous Google Drive account, we did not include validation and training dataset. This is only an example showing how to apply validation after training finishes. Actually running the code will fail because the validation dataset and intermediate models are not included. The output of this command can be found in the directory of each model, as validation.png and validation.npy.'
         print(warning_msg)
         
+        all_str += '# ' + warning_msg
+        
     if args.mode == 'train':
-        warning_msg = 'Note! Due to the storage limit on anonymous Google Drive account, we did not include validation and training dataset. This is only an example showing how to train the models, actually running the code will fail because the training dataset is not included. The final trained model for every experiment can be found in their corresponding directory.'
+        warning_msg = 'Note! Due to the storage limit on anonymous Google Drive account, we did not include validation and training dataset. This is only an example showing how to train the models if training dataset is available. Actually running the code will fail because the training dataset is not included. The final trained model for every experiment can be found in their corresponding directory.'
         print(warning_msg)
         
         all_str += '# ' + warning_msg
         
     if application == 'simulation':
+        
         # Hard-code the command for boids, as it's very different from other imagery models
         assert len(entries) == 1 and 'boids' in entries
         assert args.mode in ['train', 'inference']
@@ -153,6 +326,10 @@ python metric_evaluation.py {args.modelroot}/models/{eval_dir} {args.modelroot}/
             every_nth = 1
             
         for idx in range(len(info['dir'])):
+            
+            if args.mode == 'analyze' and idx > 0:
+                continue
+            
             model_dir = info['dir'][idx].split('/')[0]
             
             eval_dir = info['dir'][idx]
@@ -186,8 +363,12 @@ python metric_evaluation.py {args.modelroot}/models/{eval_dir} {args.modelroot}/
                 extra_flag += ' --fov %s' % info['fov']
                 
             if 'geometry' in info.keys():
-                extra_flag += ' --geometry %s' % info['geometry']
+                geometry = info['geometry']
+                extra_flag += ' --geometry %s' % geometry
             else:
+                geometry = 'plane'
+            
+            if geometry == 'plane':
                 if model_type != 'RGBx':
                     # only for plane
                     extra_flag += ' --no_additional_features --ignore_last_n_scale 7 --include_noise_feature'
@@ -232,6 +413,8 @@ python model.py --name {args.modelroot}/models/{model_dir} --dataroot {args.mode
             if args.mode == 'accurate_timing':
                 cmd += ' --accurate_timing --repeat_timing 10'
                 
+            
+                
             if args.mode == 'inference':
                 
                 cmd += f"""
@@ -240,6 +423,15 @@ python metric_evaluation.py {args.modelroot}/models/{eval_dir} {args.modelroot}/
                 
                 if application == 'temporal':
                     cmd += ' all --prefix test_ground29'
+                    
+            if args.mode == 'analyze':
+                cmd = f"""
+{cmd} --read_from_best_validation --get_col_aux_inds
+
+{cmd} --read_from_best_validation --test_training
+
+{cmd} --read_from_best_validation --test_training --analyze_channel --analyze_current_only
+"""
                 
             all_str += f"""
 # {args.mode} for Application {application}, shader {actual_shader}, {model_type}
