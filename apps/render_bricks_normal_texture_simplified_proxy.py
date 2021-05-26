@@ -171,212 +171,76 @@ normal_map = True
 
 def main():
     
-    #camdir = '/n/fs/shaderml/datas_bricks_dsf'
-    
-    dir = '/n/fs/shaderml/1x_1sample_bricks'
-    camdir = '/n/fs/visualai-scr/yutingy/bricks_normal_texture_val_saliency/tiles'
-    
-    mode = 'train'
-    
-    #texture_maps = np.load('bricks_normal_map3.npy')
-    texture_maps = 'bricks_normal_map3.npy'
-    
-    camera_pos = np.load('../bricks_normal_texture/camera_pos.npy')
-    render_t = np.zeros(camera_pos.shape[0])
-    nframes = camera_pos.shape[0]
-    
-    render_single(os.path.join(dir, mode), 'render_bricks_normal_texture_simplified_proxy', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': False, 'zero_samples': False, 'gname': '%s_small' % mode, 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True, 'texture_maps': texture_maps, 'use_texture_maps': True})
-    return
-    
-    camera_pos = np.load(os.path.join(camdir, '%s_with_bg.npy' % mode))[:1]
-    render_t = np.load(os.path.join(camdir, '%s_time_with_bg.npy' % mode))[:1]
-    tile_start = np.load(os.path.join(camdir, '%s_start_with_bg.npy' % mode))[:1]
-    nframes = camera_pos.shape[0]
-    
-    render_single(os.path.join(dir, mode), 'render_bricks_normal_texture', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': False, 'zero_samples': False, 'gname': '%s_small' % mode, 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True, 'texture_maps': texture_maps, 'use_texture_maps': True})
-    
-    #render_single(os.path.join(dir, mode), 'render_bricks_normal_texture', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (320, 320), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': '%s_small' % mode, 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True, 'texture_maps': texture_maps, 'use_texture_maps': True, 'tile_only': True, 'tile_start': tile_start})
-    return
-    
-    
-    if True:
+    if len(sys.argv) < 3:
+        print('Usage: python render_[shader].py mode base_dir')
+        raise
         
-        mode = 'validate'
+    mode = sys.argv[1]
+    base_dir = sys.argv[2]
     
-        camera_pos = np.load(os.path.join(dir, '%s.npy' % mode))
-        render_t = np.load(os.path.join(dir, '%s_time.npy' % mode))
-        nframes = camera_pos.shape[0]
+    camera_dir = os.path.join(base_dir, 'datasets/datas_bricks_simplified_with_bg')
+    preprocess_dir = os.path.join(base_dir, 'preprocess/bricks')
+    
+    if not os.path.exists(camera_dir):
+        os.makedirs(camera_dir, exist_ok=True)
+    
+    if not os.path.exists(preprocess_dir):
+        os.makedirs(preprocess_dir, exist_ok=True)
 
-        render_single(os.path.join(dir, mode), 'render_bricks_normal_texture', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': True, 'gname': '%s_noisy_expanded' % mode, 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True, 'texture_maps': texture_maps, 'use_texture_maps': True, 'expand_boundary': 160})
-
-        return
-
-
-
-        camera_pos = np.load(os.path.join(camdir, 'train.npy'))
-        render_t = np.load(os.path.join(camdir, 'train_time.npy'))
-        train_start = np.load(os.path.join(camdir, 'train_start.npy'))
-
-        nframes = camera_pos.shape[0]
-
-        render_single(os.path.join(dir, 'train'), 'render_bricks', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (320, 320), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'train_noisy_expanded', 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True, 'tile_only': True, 'tile_start': train_start, 'collect_feature_mean_only': True, 'feature_normalize_dir': camdir, 'reference_dir': os.path.join(camdir, 'train_img')})
-
-        return
-
-        #camera_pos = numpy.load('/n/fs/shaderml/datas_bricks_staggered_tiles/train.npy')
-
-        camera_pos = numpy.load(os.path.join(dir, 'train.npy'))
-        nframes = camera_pos.shape[0]
-        render_t = numpy.zeros(nframes)
+    texture_maps = os.path.join(base_dir, 'datasets', 'bricks_texture.npy')
+    
+    if mode == 'collect_raw':
+        
+        camera_pos = numpy.load(os.path.join(camera_dir, 'train.npy'))
+        render_t = numpy.load(os.path.join(camera_dir, 'train_time.npy'))
         nframes = render_t.shape[0]
-
-        render_single(os.path.join(dir, 'train'), 'render_bricks', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'train_noisy_expanded', 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True, 'expand_boundary': 160})
-        return
-    
-    # generate and store random camera data
-    if True:
-        #for mode in ['train', 'test_close', 'test_far', 'test_middle']:
-        for mode in ['validate']:
-            if mode == 'train':
-                nframes = 800
-                z_min = 7
-                z_max = 90
-            elif mode == 'validate':
-                nframes = 80
-                z_min = 7
-                z_max = 90
-            elif mode == 'test_close':
-                nframes = 5
-                z_min = 3
-                z_max = 7
-            elif mode == 'test_far':
-                nframes = 5
-                z_min = 90
-                z_max = 180
-            else:
-                nframes = 20
-                z_min = 7
-                z_max = 90
-            camera_pos = [None] * nframes
-            render_single(os.path.join(dir, mode), 'render_bricks', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (40, 60), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'z_min': z_min, 'z_max': z_max, 'camera_pos': camera_pos})
-            numpy.save(os.path.join(dir, mode), camera_pos)
-            
-            render_t = np.zeros(nframes)
-            numpy.save(os.path.join(dir, mode) + '_time.npy', render_t)
-            
-            render_single(os.path.join(dir, mode), 'render_bricks', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'gname': '%s_noisy_expanded' % mode, 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True, 'expand_boundary': 160})
-        return
-    
-    if False:
-        camera_pos = numpy.load(os.path.join(dir, 'test_far.npy'))
-        render_t = numpy.zeros(5)
-        nframes = camera_pos.shape[0]
-        render_single(dir, 'render_bricks', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'gname': 'train_small', 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True})
-        return
-    
-    if False:
-        camera_pos = numpy.load(os.path.join(dir, 'train.npy'))
-
-        camera_pos_periodic_range = numpy.array([20, 20, 0, 2 * np.pi, 2 * np.pi, 2 * np.pi])
-        random_half_idx = numpy.random.choice(camera_pos.shape[0], size=camera_pos.shape[0] // 2, replace=False)
-        camera_pos -= camera_pos_periodic_range
-        camera_pos[random_half_idx] += 2 * camera_pos_periodic_range
-
-        render_t = numpy.zeros(800)
-        #render_t = numpy.load('/n/fs/shaderml/datas_bricks_staggered_tiles/train_time.npy')
-        #tile_start = numpy.load('/n/fs/shaderml/datas_bricks_staggered_tiles/train_start.npy')
-        nframes = camera_pos.shape[0]
-        render_single(dir, 'render_bricks', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (80, 120), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'gname': 'train_small', 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True})
-        return
-    
-    if False:
-        camera_pos = numpy.load('/n/fs/shaderml/datas_bricks_dsf/train.npy')
-        nframes = camera_pos.shape[0]
-        render_t = numpy.zeros(nframes)
-        tile_start = numpy.load('/n/fs/shaderml/datas_bricks_dsf/train_start.npy')
-
-        nsamples = 100
-        sampled_camera_pos = np.tile(camera_pos, (nsamples, 1))
-        camera_sigma = np.array([0.3, 0.3, 1, 0.1, 0.1, 0.1])
-        tile_start = np.tile(tile_start, (nsamples, 1))
-        for n in range(1, nsamples):
-            sampled_camera_pos[nframes*n:nframes*(n+1), :] += np.random.randn(nframes, 6) * camera_sigma
-        numpy.save(os.path.join('/n/fs/shaderml/1x_1sample_bricks', 'camera_sampled_train_v2.npy'), sampled_camera_pos)
-        numpy.save(os.path.join('/n/fs/shaderml/1x_1sample_bricks', 'camera_sampled_tile_start.npy'), tile_start)
-    
-    if False:
-        camera_pos = numpy.load(os.path.join(dir, 'train.npy'))
-        nframes = camera_pos.shape[0]
-        nsamples = 100
-        sampled_camera_pos = np.tile(camera_pos, (nsamples, 1))
-        camera_sigma = np.array([0.3, 0.3, 1, 0.1, 0.1, 0.1])
-        for n in range(1, nsamples):
-            sampled_camera_pos[nframes*n:nframes*(n+1), :] += np.random.randn(nframes, 6) * camera_sigma
-        numpy.save(os.path.join('/n/fs/shaderml/1x_1sample_bricks', 'camera_sampled_full_res.npy'), sampled_camera_pos)
         
-    if False:
-        camera_pos = numpy.load('/n/fs/shaderml/1x_1sample_bricks_loss_proxy/validate.npy')
-        nframes = camera_pos.shape[0]
-        nsamples = 10
-        sampled_camera_pos = np.tile(camera_pos, (nsamples, 1))
-        camera_sigma = np.array([0.3, 0.3, 1, 0.1, 0.1, 0.1])
-        for n in range(1, nsamples):
-            sampled_camera_pos[nframes*n:nframes*(n+1), :] += np.random.randn(nframes, 6) * camera_sigma
-        numpy.save(os.path.join('/n/fs/shaderml/1x_1sample_bricks_loss_proxy', 'camera_sampled_full_res.npy'), sampled_camera_pos)
-    
-    camera_pos0 = numpy.load('/n/fs/shaderml/datas_bricks_dsf/test_close.npy')
-    camera_pos1 = numpy.load('/n/fs/shaderml/datas_bricks_dsf/test_far.npy')
-    camera_pos2 = numpy.load('/n/fs/shaderml/datas_bricks_dsf/test_middle.npy')
-    camera_pos = numpy.concatenate((camera_pos0, camera_pos1, camera_pos2), 0)
-    nframes = camera_pos.shape[0]
-    nsamples = 10
-    sampled_camera_pos = np.tile(camera_pos, (nsamples, 1))
-    camera_sigma = np.array([0.3, 0.3, 1, 0.1, 0.1, 0.1])
-    for n in range(1, nsamples):
-        sampled_camera_pos[nframes*n:nframes*(n+1), :] += np.random.randn(nframes, 6) * camera_sigma
-    numpy.save(os.path.join('/n/fs/shaderml/datas_bricks_dsf', 'camera_sampled_test_full_res.npy'), sampled_camera_pos)
-    
+        train_start = numpy.load(os.path.join(camera_dir, 'train_start.npy'))
+        render_single(os.path.join(preprocess_dir, 'train'), 'render_bricks_normal_texture_simplified_proxy', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (80, 80), render_kw={'render_t': render_t, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'zero_samples': False, 'gname': 'train_small', 'tile_only': True, 'tile_start': train_start, 'texture_maps': texture_maps, 'use_texture_maps': True, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True})
+        
+    elif mode == 'generate_dataset':
+        for mode in ['train', 'test_close', 'test_far', 'test_middle', 'validate']:
+            camera_pos = numpy.load(os.path.join(camera_dir, mode + '.npy'))            
+            nframes = camera_pos.shape[0]
+            
+            if mode in ['train', 'validate']:
+                tile_start = numpy.load(os.path.join(camera_dir, mode + '_start.npy'))[:nframes]
+                render_size = (320, 320)
+                tile_only = True
+                render_t = numpy.load(os.path.join(camera_dir, mode + '_time.npy'))
+            else:
+                tile_start = None
+                render_size = (640, 960)
+                tile_only = False
+                render_t_pool = numpy.load(os.path.join(camera_dir, 'test_time.npy'))
+                if mode == 'test_close':
+                    render_t = render_t_pool[:5]
+                elif mode == 'test_far':
+                    render_t = render_t_pool[5:10]
+                else:
+                    render_t = render_t_pool[10:]
+                    
+            render_t = render_t[:nframes]
+                    
+            outdir = get_shader_dirname(os.path.join(preprocess_dir, mode), shaders[0], 'none', 'plane')
+                
+            render_single(os.path.join(preprocess_dir, mode), 'render_bricks_normal_texture_simplified_proxy', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = render_size, render_kw={'render_t': render_t, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'zero_samples': False, 'gname': '%s_ground' % mode, 'tile_only': tile_only, 'tile_start': tile_start, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True, 'texture_maps': texture_maps, 'use_texture_maps': True})
+            
+            if mode in ['train', 'validate']:
+                target_dir = os.path.join(camera_dir, mode + '_img')
+            else:
+                target_dir = os.path.join(camera_dir, 'test_img')
+                
+            if not os.path.exists(target_dir):
+                os.mkdir(target_dir)
+                
+            
+            for file in os.listdir(outdir):
+                if file.startswith('%s_ground' % mode) and file.endswith('.png'):
+                    os.rename(os.path.join(outdir, file),
+                              os.path.join(target_dir, file))
+        
     return
-    #render_single(dir, 'render_bricks', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (320, 320), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 100, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'gname': 'train_smooth_camera_ground', 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True, 'camera_sigma': '0.05,0.05,0.1,0.005,0.005,0.005', 'tile_only': True, 'tile_start': tile_start, 'batch_size': 5})
-    camera_pos = camera_pos[396:401]
-    nframes = camera_pos.shape[0]
-    render_t = render_t[396:401]
-    tile_start = tile_start[396:401]
-    #render_single(dir, 'render_bricks', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (320, 320), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 100, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'gname': 'train_smooth_camera_ground', 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True, 'camera_sigma': '0,0,0,0.01,0.01,0.01', 'tile_only': True, 'tile_start': tile_start, 'batch_size': 5})
-    render_single(dir, 'render_bricks', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (320, 320), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'gname': 'train_small', 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True, 'tile_only': True, 'tile_start': tile_start})
-    return
-
-    camera_pos = numpy.array([[0, 0, 100, 0, np.pi, 0]] * 30)
-    for i in range(30):
-        camera_pos[i, 2] = 10 + 5 * i
-    nframes = camera_pos.shape[0]
-    render_t = numpy.zeros(nframes)
-    render_single('out/top_view', 'render_bricks', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'train_small'})
-    #render_single(os.path.join(dir, 'train'), 'render_bricks', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size=(40, 60), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'train_small', 'collect_loop_and_features': True})
-    #render_single('out/higher_res', 'render_bricks', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 640), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': True, 'gname': 'train_small', 'tile_only': True, 'tile_start': tile_start, 'rescale_tile_start': 0.5})
-    #for mode in ['test_close', 'test_middle', 'test_far']:
-    #    camera_pos = numpy.load(os.path.join(dir, mode + '.npy'))
-    #    render_t = numpy.zeros(camera_pos.shape[0])
-    #    nframes = camera_pos.shape[0]
-    #    render_single('out', 'render_bricks', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': mode+'_ground'})
-    return
-    
-
-    if True:
-        for mode in ['train', 'test_close', 'test_far', 'test_middle']:
-        #for mode in ['test_close', 'test_far', 'test_middle']:
-        #for mode in ['test_close']:
-        #for mode in ['train']:
-            camera_pos = numpy.load(os.path.join(dir, mode) + '.npy').tolist()
-            nframes = len(camera_pos)
-            render_single(os.path.join('out', mode), 'render_bricks', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'gname': mode + '_small', 'is_tf': True})
-            #render_single(os.path.join('out', mode), 'render_bricks', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size=(640, 960), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'gname': mode + '_ground2', 'is_tf': False})
-
-    #camera_pos = [None] * 25
-    #render_single('out', 'render_bricks', 'sphere', 'none', sys.argv[1:], nframes=len(camera_pos), log_intermediates=False, render_size=(640, 960), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'x_min': -1000.0, 'x_max': 1000.0, 'y_min': -1000.0, 'y_max': 1000.0, 'z_min': -1000.0, 'z_max': 1000.0, 'z_log_range': False, 'camera_pos': camera_pos, 'count_edge': True})
-    #numpy.save('camera_pos_sphere.npy', numpy.array(camera_pos))
-        #render_single('out', 'render_bricks', 'plane', 'none', sys.argv[1:], nframes=1, time_error=time_error, log_intermediates=True)
-#    render_plane_shaders(shaders, default_render_size, use_triangle_wave=False, log_intermediates=log_intermediates, is_color=is_color, normal_map='ripples')
 
 if __name__ == '__main__':
     main()

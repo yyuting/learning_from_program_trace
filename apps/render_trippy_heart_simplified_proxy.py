@@ -77,78 +77,75 @@ is_color = True                    # Set to True if the shader is 3 channel (col
 fov = 'small'
 
 def main():
-    dir = '/n/fs/shaderml/1x_1sample_trippy_heart_tile_rotation/raw_data'
     
-    camera_pos = numpy.load('/n/fs/shaderml/datas_trippy_temporal/test_middle.npy')[:1]
-    render_t = numpy.load('/n/fs/shaderml/datas_trippy_temporal/test_time.npy')[10:11] + 29 / 30
-    nframes = 1
-    render_single('out', 'render_trippy_heart_simplified_proxy', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'trippy_temporal_input', 'efficient_trace': True, 'chron_order': True, 'collect_loop_and_features': True, 'subsample_loops': 4})
-    return
-    
-    if True:
+    if len(sys.argv) < 3:
+        print('Usage: python render_[shader].py mode base_dir')
+        raise
         
-        camera_pos = numpy.load(os.path.join(dir, 'train_pl.npy'))
-        render_t = numpy.load(os.path.join(dir, 'train_time_pl.npy'))
+    mode = sys.argv[1]
+    base_dir = sys.argv[2]
+    
+    camera_dir = os.path.join(base_dir, 'datasets/datas_trippy_simplified_new_extrapolation')
+    preprocess_dir = os.path.join(base_dir, 'preprocess/trippy')
+    
+    if not os.path.exists(camera_dir):
+        os.makedirs(camera_dir, exist_ok=True)
+    
+    if not os.path.exists(preprocess_dir):
+        os.makedirs(preprocess_dir, exist_ok=True)
+        
+    if mode == 'collect_raw':
+        
+        camera_pos = numpy.load(os.path.join(camera_dir, 'train.npy'))
+        render_t = numpy.load(os.path.join(camera_dir, 'train_time.npy'))
         nframes = render_t.shape[0]
-        render_single(os.path.join(dir, 'train'), 'render_trippy_heart_simplified_proxy', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (80, 120), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'train_small', 'efficient_trace': True, 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'SELECT_FEATURE_THRE': 400})
-        #nframes = 10
-        #camera_pos = camera_pos[:10, :]
-        #render_t = render_t[:10]
-        #render_single(os.path.join(dir, 'train'), 'render_trippy_heart_simplified_proxy', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'train_small', 'efficient_trace': True, 'chron_order': True, 'collect_loop_and_features': True, 'subsample_loops': 4})
-        #render_single(os.path.join(dir, 'train'), 'render_trippy_heart_simplified_proxy', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (40, 60), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'train_small', 'efficient_trace': True, 'chron_order': True, 'collect_loop_and_features': True, 'subsample_loops': 4})
-        #render_single(os.path.join(dir, 'train'), 'render_trippy_heart_simplified_proxy', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (40, 60), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'train_small', 'efficient_trace': True, 'chron_order': True})
-        return
-   
-    if False:
-        #for mode in ['test_far']:
-        for mode in ['train']:
-            if mode == 'train':
-                nframes = 800
-                z_min = 40 / 1.5
-                z_max = 165 * 1.5
-            elif mode == 'test_close':
-                nframes = 5
-                z_max = 40 / 1.5
-                z_min = 10
-            elif mode == 'test_far':
-                nframes = 5
-                z_min = 165 * 1.5
-                z_max = 400
-            elif mode == 'test_middle':
-                nframes = 20
-                z_min = 40
-                z_max = 165
+        
+        train_start = numpy.load(os.path.join(camera_dir, 'train_start.npy'))
+        render_single(os.path.join(preprocess_dir, 'train'), 'render_trippy_heart_simplified_proxy', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (80, 80), render_kw={'render_t': render_t, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'zero_samples': False, 'gname': 'train_small', 'tile_only': True, 'tile_start': train_start, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True})
+        
+    elif mode == 'generate_dataset':
+        for mode in ['train', 'test_close', 'test_far', 'test_middle', 'validate']:
+            camera_pos = numpy.load(os.path.join(camera_dir, mode + '.npy'))            
+            nframes = camera_pos.shape[0]
+            
+            if mode in ['train', 'validate']:
+                tile_start = numpy.load(os.path.join(camera_dir, mode + '_start.npy'))[:nframes]
+                render_size = (320, 320)
+                tile_only = True
+                render_t = numpy.load(os.path.join(camera_dir, mode + '_time.npy'))
             else:
-                raise
-            camera_pos = numpy.array([[0.0, 0.0, 50.0, numpy.pi, 0.0, 0.0]] * nframes)
-            for i in range(nframes):
-                camera_pos[i, 2] = numpy.random.uniform(z_min, z_max)
-            numpy.save(os.path.join(dir, mode + '_pl.npy'), camera_pos)
-            t_min = 0.0
-            t_max = 4.0 * numpy.pi
-            render_t = numpy.random.uniform(t_min, t_max, size=nframes)
-            numpy.save(os.path.join(dir, mode + '_time_pl.npy'), render_t)
+                tile_start = None
+                render_size = (640, 960)
+                tile_only = False
+                render_t_pool = numpy.load(os.path.join(camera_dir, 'test_time.npy'))
+                if mode == 'test_close':
+                    render_t = render_t_pool[:5]
+                elif mode == 'test_far':
+                    render_t = render_t_pool[5:10]
+                else:
+                    render_t = render_t_pool[10:]
+                    
+            render_t = render_t[:nframes]
+                    
+            outdir = get_shader_dirname(os.path.join(preprocess_dir, mode), shaders[0], 'none', 'plane')
+                
+            render_single(os.path.join(preprocess_dir, mode), 'render_trippy_heart_simplified_proxy', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = render_size, render_kw={'render_t': render_t, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'zero_samples': False, 'gname': '%s_ground' % mode, 'tile_only': tile_only, 'tile_start': tile_start, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True})
+            
+            if mode in ['train', 'validate']:
+                target_dir = os.path.join(camera_dir, mode + '_img')
+            else:
+                target_dir = os.path.join(camera_dir, 'test_img')
+                
+            if not os.path.exists(target_dir):
+                os.mkdir(target_dir)
+                
+            
+            for file in os.listdir(outdir):
+                if file.startswith('%s_ground' % mode) and file.endswith('.png'):
+                    os.rename(os.path.join(outdir, file),
+                              os.path.join(target_dir, file))
+        
     return
-
-    #for mode in ['test_far']:
-    #for mode in ['train', 'test_close', 'test_far', 'test_middle']:
-    #for mode in ['test_close', 'test_far', 'test_middle']:
-    for mode in ['train']:
-        if not os.path.isdir(os.path.join(dir, mode)):
-            os.mkdir(os.path.join(dir, mode))
-        camera_pos = numpy.load(os.path.join(dir, mode + '.npy'))
-        render_t = numpy.load(os.path.join(dir, mode + '_time.npy'))
-        nframes = render_t.shape[0]
-        print(nframes)
-        render_single('out', 'render_trippy_heart', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'gname': mode + '_small', 'is_tf': True})
-        #render_single(os.path.join(dir, mode), 'render_trippy_heart', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (672, 896), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'gname': mode + '_ground', 'is_tf': True})
-        #render_single(os.path.join(dir, mode), 'render_trippy_heart', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (80, 120), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'small', 'efficient_trace': True})
-    return
-    for mode in ['train', 'test_close', 'test_far', 'test_middle']:
-    #for mode in ['test_close', 'test_far', 'test_middle']:
-        camera_pos = numpy.load(os.path.join(dir, mode) + '.npy').tolist()
-        nframes = len(camera_pos)
-        render_single('out', 'render_trippy_heart', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'gname': mode + '_small', 'is_tf': True})
 
 if __name__ == '__main__':
     main()

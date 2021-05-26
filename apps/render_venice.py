@@ -424,109 +424,93 @@ def path_np(time):
     return [-20 * np.sin(z * 0.02) + 5 * np.cos(time * 0.1), 1.25 * np.ones(z.shape), z]
 
 def main():
-    dir = '/n/fs/shaderml/1x_1sample_venice'
-    #dir = '/n/fs/shaderml/1x_1sample_venice_focus_far'
-    camdir = '/n/fs/shaderml/1x_1sample_venice'
     
-    mode = 'validate'
+    if len(sys.argv) < 3:
+        print('Usage: python render_[shader].py base_mode base_dir')
+        raise
+        
+    base_mode = sys.argv[1]
+    base_dir = sys.argv[2]
+    
+    camera_dir = os.path.join(base_dir, 'datasets/datas_venice_new_extrapolation')
+    preprocess_dir = os.path.join(base_dir, 'preprocess/venice')
 
+    texture_maps = os.path.join(base_dir, 'datasets/venice_texture.npy')
     
-    texture_maps = np.load('venice_texture2.npy')
-    texture_maps = np.transpose(texture_maps, (2, 0, 1))
+    if not os.path.exists(camera_dir):
+        os.makedirs(camera_dir, exist_ok=True)
     
-    if False:
-        nframes = 80
-
-        # limited camera pos
-        # camera x, y, z determined by path(), to make sure it stays on the river
-        # ang1 is limited to -0.2 to 0, to make sure water is dominant
-        # ang2 is limited to -0.5 to 0.5, there is a bug when facing backward (even in the original shadertoy example)
-        # ang3 is limited to np.pi - 0.2 to np.pi + 0.2
-
-        ro_seed = np.random.rand(nframes) * np.pi * 100
-        camera_pos_xyz = path_np(ro_seed)
-
-        camera_pos_ang1 = -np.random.rand(nframes) * 0.2
-        camera_pos_ang2 = np.random.rand(nframes) - 0.5
-        camera_pos_ang3 = np.random.rand(nframes) * 0.4 - 0.2 + np.pi
-        camera_pos = np.stack(camera_pos_xyz + [camera_pos_ang1, camera_pos_ang2, camera_pos_ang3], 1)
-        np.save(os.path.join(dir, '%s.npy' % mode), camera_pos)
-
-        render_t = np.random.rand(nframes) * 1000
-        np.save(os.path.join(dir, '%s_time.npy' % mode), render_t)
-        return
+    if not os.path.exists(preprocess_dir):
+        os.makedirs(preprocess_dir, exist_ok=True)
     
-    camera_pos = numpy.load(os.path.join(camdir, '%s.npy' % mode))
-    render_t = numpy.load(os.path.join(camdir, '%s_time.npy' % mode))
-    
-    mode = 'train'
-    
-    camera_pos = numpy.load(os.path.join(dir, '%s.npy' % mode))
-    render_t = numpy.load(os.path.join(dir, '%s_time.npy' % mode))
-    tile_start = numpy.load(os.path.join(dir, '%s_start.npy' % mode))
-    nframes = camera_pos.shape[0]
-    
-    render_single(os.path.join(dir, mode), 'render_venice', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (80, 80), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname':'%s_small' % mode, 'collect_loop_and_features': True, 'texture_maps': texture_maps, 'use_texture_maps': True, 'render_t': render_t, 'tile_only': True, 'tile_start': tile_start, 'log_only_return_def_raymarching': True})
-    
-    #render_single(os.path.join(dir, mode), 'render_venice', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (320, 320), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname':'%s_ground' % mode, 'collect_loop_and_features': True, 'last_only': True, 'texture_maps': texture_maps, 'use_texture_maps': True, 'render_t': render_t, 'tile_only': True, 'tile_start': tile_start, 'batch_size': 6, 'parallel_gpu': 3})
-    return
-    
-    if False:
-        dir = '/n/fs/visualai-scr/yutingy/venice_all_trace'
-        render_single(dir, 'render_venice', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (10, 15), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname':'train_small', 'texture_maps': texture_maps, 'use_texture_maps': True, 'render_t': render_t, 'robust_simplification': True})
-        return
-   
-    render_single(os.path.join(dir, mode), 'render_venice', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname':'%s_noisy_expanded' % mode, 'collect_loop_and_features': True, 'last_only': True, 'texture_maps': texture_maps, 'use_texture_maps': True, 'render_t': render_t, 'expand_boundary': 160})
-    return
-
-    
-    camera_pos = numpy.load('/n/fs/shaderml/datas_venice_make_teaser/test_close.npy')
-    render_t = numpy.load('/n/fs/shaderml/datas_venice_make_teaser/test_time.npy')[:1]
-    nframes = 1
-    render_single('out', 'render_venice', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 100, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname':'teaser', 'collect_loop_and_features': True, 'last_only': True, 'texture_maps': texture_maps, 'use_texture_maps': True, 'batch_size': 10, 'render_t': render_t})
-    return
-    
-    if False:
-        camera_pos = numpy.load('/n/fs/visualai-scr/yutingy/1x_1sample_venice_100spp_simplified_30_70_automatic_200/render_ours/camera_pos.npy')
-        render_t = numpy.load('/n/fs/visualai-scr/yutingy/1x_1sample_venice_100spp_simplified_30_70_automatic_200/render_ours/render_t.npy')
-        nframes = camera_pos.shape[0]
-
-        render_single('out', 'render_venice', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 100, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname':'video_gt', 'collect_loop_and_features': True, 'last_only': True, 'texture_maps': texture_maps, 'use_texture_maps': True, 'batch_size': 10, 'render_t': render_t})
-    return
-    
-    
-    if False:
-
-        nframes = 1
-        camera_pos = np.array([[-16., 2., 20., 0., 0., 3.14]]*nframes)
-        render_t = np.array([0.]*nframes)
-
-        render_single(os.path.join('out', 'train'), 'render_venice', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname':'train_ground_140_iter', 'collect_loop_and_features': True, 'last_only': True, 'texture_maps': texture_maps, 'use_texture_maps': True, 'render_t': render_t})
-    
-    
-    nframes = 800
-    
-    camera_pos = np.load(os.path.join(camdir, 'train.npy'))
-    render_t = np.load(os.path.join(camdir, 'train_time.npy'))
-    nframes = camera_pos.shape[0]
-    
-    render_single(os.path.join(dir, 'train'), 'render_venice', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (80, 120), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname':'train_small', 'texture_maps': texture_maps, 'use_texture_maps': True, 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True, 'SELECT_FEATURE_THRE': 200, 'render_t': render_t})
-    return
-    
-    
-    if False:
-        for mode in ['test_close', 'test_far', 'test_middle']:
+    if base_mode == 'collect_raw':
+        
+        camera_pos = numpy.load(os.path.join(camera_dir, 'train.npy'))
+        render_t = numpy.load(os.path.join(camera_dir, 'train_time.npy'))
+        nframes = render_t.shape[0]
+        
+        train_start = numpy.load(os.path.join(camera_dir, 'train_start.npy'))
+        render_single(os.path.join(preprocess_dir, 'train'), 'render_venice', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (80, 80), render_kw={'render_t': render_t, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'zero_samples': False, 'gname': 'train_small', 'tile_only': True, 'tile_start': train_start, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True, 'texture_maps': texture_maps, 'use_texture_maps': True})
+        
+    elif base_mode == 'generate_dataset':
+        for mode in ['train', 'test_close', 'test_far', 'test_middle', 'validate']:
+            camera_pos = numpy.load(os.path.join(camera_dir, mode + '.npy'))            
+            nframes = camera_pos.shape[0]
+            
+            if mode in ['train', 'validate']:
+                tile_start = numpy.load(os.path.join(camera_dir, mode + '_start.npy'))[:nframes]
+                render_size = (320, 320)
+                tile_only = True
+                render_t = numpy.load(os.path.join(camera_dir, mode + '_time.npy'))
+            else:
+                tile_start = None
+                render_size = (640, 960)
+                tile_only = False
+                render_t_pool = numpy.load(os.path.join(camera_dir, 'test_time.npy'))
+                if mode == 'test_close':
+                    render_t = render_t_pool[:5]
+                elif mode == 'test_far':
+                    render_t = render_t_pool[5:10]
+                else:
+                    render_t = render_t_pool[10:]
+                    
+            render_t = render_t[:nframes]
+                    
+            outdir = get_shader_dirname(os.path.join(preprocess_dir, mode), shaders[0], 'none', 'none')
+                
+            render_single(os.path.join(preprocess_dir, mode), 'render_venice', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = render_size, render_kw={'render_t': render_t, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'zero_samples': False, 'gname': '%s_ground' % mode, 'tile_only': tile_only, 'tile_start': tile_start, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True, 'texture_maps': texture_maps, 'use_texture_maps': True})
+            
+            if mode in ['train', 'validate']:
+                target_dir = os.path.join(camera_dir, mode + '_img')
+            else:
+                target_dir = os.path.join(camera_dir, 'test_img')
+                
+            if not os.path.exists(target_dir):
+                os.mkdir(target_dir)
+                
+            
+            for file in os.listdir(outdir):
+                if file.startswith('%s_ground' % mode) and file.endswith('.png'):
+                    os.rename(os.path.join(outdir, file),
+                              os.path.join(target_dir, file))
+                    
+    elif base_mode == 'sample_camera_pos':
+        
+        test_render_t = None
+        
+        t_range = 1000
+        
+        for mode in ['train', 'test_close', 'test_far', 'test_middle', 'validate']:
+            
             if mode == 'train':
                 nframes = 800
-            elif mode in ['test_close', 'test_far']:
-                nframes = 5
-            else:
+            elif mode == 'validate':
+                nframes = 80
+            elif mode == 'test_middle':
                 nframes = 20
-            # limited camera pos
-            # camera x, y, z determined by path(), to make sure it stays on the river
-            # ang1 is limited to -0.2 to 0, to make sure water is dominant
-            # ang2 is limited to -0.5 to 0.5, there is a bug when facing backward (even in the original shadertoy example)
-            # ang3 is limited to np.pi - 0.2 to np.pi + 0.2
+            else:
+                nframes = 5
+            
             ro_seed = np.random.rand(nframes) * np.pi * 100
             camera_pos_xyz = path_np(ro_seed)
             if mode == 'test_close':
@@ -537,37 +521,29 @@ def main():
             camera_pos_ang2 = np.random.rand(nframes) - 0.5
             camera_pos_ang3 = np.random.rand(nframes) * 0.4 - 0.2 + np.pi
             camera_pos = np.stack(camera_pos_xyz + [camera_pos_ang1, camera_pos_ang2, camera_pos_ang3], 1)
-            np.save(os.path.join(dir, '%s.npy' % mode), camera_pos)
-            
+            np.save(os.path.join(preprocess_dir, '%s.npy' % mode), camera_pos)
 
-            render_t = np.random.rand(nframes) * 1000
-            np.save(os.path.join(dir, '%s_time.npy' % mode), render_t)
-        return
-    else:
-        #for mode in ['test_close', 'test_far', 'test_middle']:
-        for mode in ['train']:
-            camera_pos = np.load(os.path.join(dir, '%s.npy' % mode))
-            render_t = np.load(os.path.join(dir, '%s_time.npy' % mode))
-            nframes = camera_pos.shape[0]
-        
-            #render_single(os.path.join('out', 'train'), 'render_venice', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname':'train_small', 'collect_loop_and_features': True, 'last_only': True, 'texture_maps': texture_maps, 'use_texture_maps': True, 'render_t': render_t})
-            #return
-        
-            if mode == 'train':
-                tile_start = np.load(os.path.join(dir, 'train_start.npy'))
-                render_single(os.path.join(dir, 'train'), 'render_venice', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (320, 320), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 100, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname':'train_ground', 'collect_loop_and_features': True, 'last_only': True, 'texture_maps': texture_maps, 'use_texture_maps': True, 'parallel_gpu': 2, 'tile_only': True, 'tile_start': tile_start, 'batch_size': 10, 'render_t': render_t})
-                #for i in range(7):
-                #    render_t += 1 / 30
-                #    render_single(os.path.join('out', 'train'), 'render_venice', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (320, 320), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 100, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname':'train_ground%d' % (i + 1), 'collect_loop_and_features': True, 'last_only': True, 'texture_maps': texture_maps, 'use_texture_maps': True, 'parallel_gpu': 2, 'tile_only': True, 'tile_start': tile_start, 'batch_size': 10, 'render_t': render_t})
+            if mode in ['train', 'validate']:
+                expand_boundary = 160
+                render_t = np.random.rand(nframes) * t_range
+                numpy.save(os.path.join(preprocess_dir, mode + '_time.npy'), render_t)
             else:
-                render_single(os.path.join('out', mode), 'render_venice', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 100, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname':'%s_ground' % mode, 'collect_loop_and_features': True, 'last_only': True, 'texture_maps': texture_maps, 'use_texture_maps': True, 'render_t': render_t})
+                expand_boundary = 0
+                if test_render_t is None:
+                    test_render_t = np.random.rand(30) * t_range
+                    np.save(os.path.join(preprocess_dir, 'test_time.npy'), render_t)
+                
+                if mode == 'test_close':
+                    render_t = test_render_t[:5]
+                elif mode == 'test_far':
+                    render_t = test_render_t[5:10]
+                else:
+                    render_t = test_render_t[10:]
+                    
+            render_single(os.path.join(preprocess_dir, mode), 'render_venice', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'zero_samples': False, 'gname': '%s_noisy' % mode, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True, 'expand_boundary': expand_boundary, 'texture_maps': texture_maps, 'use_texture_maps': True})
         
-        #camera_pos = camera_pos[800:]
-        #render_t = render_t[800:]
-        #tile_start = tile_start[800:]
-        #nframes -= 800
-        #render_single(os.path.join('out', 'train'), 'render_venice', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (320, 320), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 100, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname':'train_ground', 'collect_loop_and_features': True, 'last_only': True, 'texture_maps': texture_maps, 'use_texture_maps': True, 'base_ind': 800, 'tile_only': True, 'tile_start': tile_start, 'batch_size': 10})
-        
+    return
+
 if __name__ == '__main__':
     main()
         

@@ -74,33 +74,73 @@ fov = 'small'
 
 def main():
     
-    camdir = '/shaderml/playground/datas_mandelbrot'
-    dir = '/shaderml/playground/1x_1sample_manelbrot'
+    if len(sys.argv) < 3:
+        print('Usage: python render_[shader].py mode base_dir')
+        raise
+        
+    mode = sys.argv[1]
+    base_dir = sys.argv[2]
     
-    camera_pos = np.load(os.path.join(camdir, 'train.npy'))
-    render_t = np.load(os.path.join(camdir, 'train_time.npy'))
-    tile_start = np.load(os.path.join(camdir, 'train_start.npy'))
-    nframes = camera_pos.shape[0]
+    camera_dir = os.path.join(base_dir, 'datasets/datas_mandelbrot_simplified_with_bg')
+    preprocess_dir = os.path.join(base_dir, 'preprocess/mandelbrot')
     
-    render_single(os.path.join(dir, 'train'), 'render_mandelbrot_tile_radius_short_05', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (80, 80), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'gname': 'train_small', 'is_tf': True, 'efficient_trace': True, 'tile_only': True, 'tile_start': tile_start, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True})
-    return
+    if not os.path.exists(camera_dir):
+        os.makedirs(camera_dir, exist_ok=True)
     
-    #camera_pos = numpy.load('/n/fs/shaderml/datas_mandelbrot_simplified_temporal/test_far.npy')[2:3]
-    #render_t = numpy.load('/n/fs/shaderml/datas_mandelbrot_simplified_temporal/test_time.npy')[7:8] + 29 / 30
-    camera_pos = numpy.load('/n/fs/shaderml/FastImageProcessing/CAN24_AN/1x_1sample_mandelbrot_full_temporal_automatic_200_correct_alpha/render/camera_pos.npy')[-1:]
-    render_t = numpy.load('/n/fs/shaderml/FastImageProcessing/CAN24_AN/1x_1sample_mandelbrot_full_temporal_automatic_200_correct_alpha/render/render_t.npy')[-1:]
-    nframes = 1
-    render_single('out', 'render_mandelbrot_tile_radius_short_05', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'gname': 'mandelbrot_temporal_input', 'is_tf': True, 'efficient_trace': True})
-    return
-    
-    camera_pos = numpy.load(os.path.join(dir, 'train.npy'))
-    nframes = camera_pos.shape[0]
-    
-    render_single(os.path.join(dir, 'train'), 'render_mandelbrot_tile_radius_short_05', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (40, 60), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'gname': 'train_small', 'is_tf': True, 'efficient_trace': True})
+    if not os.path.exists(preprocess_dir):
+        os.makedirs(preprocess_dir, exist_ok=True)
 
-    #camera_pos = numpy.load(os.path.join(dir, 'test_middle.npy'))
-    #nframes = camera_pos.shape[0]
-    #render_single(os.path.join(dir, 'test_middle'), 'render_mandelbrot_tile_radius_short_05', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'gname': 'test_middle_small', 'is_tf': True, 'efficient_trace': True})
+    if mode == 'collect_raw':
+        
+        camera_pos = numpy.load(os.path.join(camera_dir, 'train.npy'))
+        render_t = numpy.load(os.path.join(camera_dir, 'train_time.npy'))
+        nframes = render_t.shape[0]
+        
+        train_start = numpy.load(os.path.join(camera_dir, 'train_start.npy'))
+        render_single(os.path.join(preprocess_dir, 'train'), 'render_mandelbrot_tile_radius_short_05', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (80, 80), render_kw={'render_t': render_t, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'zero_samples': False, 'gname': 'train_small', 'tile_only': True, 'tile_start': train_start, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True})
+        
+    elif mode == 'generate_dataset':
+        for mode in ['train', 'test_close', 'test_far', 'test_middle', 'validate']:
+            camera_pos = numpy.load(os.path.join(camera_dir, mode + '.npy'))            
+            nframes = camera_pos.shape[0]
+            
+            if mode in ['train', 'validate']:
+                tile_start = numpy.load(os.path.join(camera_dir, mode + '_start.npy'))[:nframes]
+                render_size = (320, 320)
+                tile_only = True
+                render_t = numpy.load(os.path.join(camera_dir, mode + '_time.npy'))
+            else:
+                tile_start = None
+                render_size = (640, 960)
+                tile_only = False
+                render_t_pool = numpy.load(os.path.join(camera_dir, 'test_time.npy'))
+                if mode == 'test_close':
+                    render_t = render_t_pool[:5]
+                elif mode == 'test_far':
+                    render_t = render_t_pool[5:10]
+                else:
+                    render_t = render_t_pool[10:]
+                    
+            render_t = render_t[:nframes]
+                    
+            outdir = get_shader_dirname(os.path.join(preprocess_dir, mode), shaders[0], 'none', 'plane')
+                
+            render_single(os.path.join(preprocess_dir, mode), 'render_mandelbrot_tile_radius_short_05', 'plane', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = render_size, render_kw={'render_t': render_t, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'zero_samples': False, 'gname': '%s_ground' % mode, 'tile_only': tile_only, 'tile_start': tile_start, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True})
+            
+            if mode in ['train', 'validate']:
+                target_dir = os.path.join(camera_dir, mode + '_img')
+            else:
+                target_dir = os.path.join(camera_dir, 'test_img')
+                
+            if not os.path.exists(target_dir):
+                os.mkdir(target_dir)
+                
+            
+            for file in os.listdir(outdir):
+                if file.startswith('%s_ground' % mode) and file.endswith('.png'):
+                    os.rename(os.path.join(outdir, file),
+                              os.path.join(target_dir, file))
+        
     return
 
 if __name__ == '__main__':

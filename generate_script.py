@@ -123,8 +123,19 @@ python local_laplacian_postprocessing.py {args.modelroot}/datasets/{denoising_da
 python local_laplacian_postprocessing.py {args.modelroot}/datasets/{denoising_dataset_dir}/validate_img {args.modelroot}/datasets/{dataset_dir}/validate_img
 """
                 else:
-                    print('TODO: finish for blur')
-                    continue
+                    all_str += f"""
+python {shader_filename}.py generate_blur_additional {args.modelroot}
+"""
+                    for mode in ['train', 'test_close', 'test_far', 'test_middle', 'validate']:
+                        
+                        if mode in ['train', 'validate']:
+                            dst_mode = mode
+                        else:
+                            dst_mode = 'test'
+                        
+                        all_str += f"""
+python defocus_blur_postprocessing.py {args.modelroot}/datasets/{denoising_dataset_dir}/{dst_mode}_img {args.modelroot}/preprocess/{shader}/{mode}/{shader_filename_short}_{geometry}_normal_none {mode}_ground {args.modelroot}/preprocess/{shader}/{mode} {args.modelroot}/datasets/{dataset_dir}/{dst_mode}_img {args.modelroot}/datasets/{dataset_dir}/{dst_mode}_add
+"""
         else:
             if application == 'simplified':
                 orig_dataset_dir = app_shader_dir_200['denoising'][shader]['gt_dir'].split('/')[0]

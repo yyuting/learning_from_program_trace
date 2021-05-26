@@ -203,71 +203,88 @@ def pos_solver(x0, x1, x2):
 
 def main():
     
-    
-    dir = '/shaderml/playground/1x_1sample_primitives'
-    
-    for mode in ['test_close', 'test_far', 'test_middle']:
-        camera_pos = np.load(os.path.join(dir, '%s.npy' % mode))
-        render_t = np.load(os.path.join(dir, '%s_time.npy' % mode))
+    if len(sys.argv) < 3:
+        print('Usage: python render_[shader].py base_mode base_dir')
+        raise
         
-        nframes = camera_pos.shape[0]
-        
-        render_single(os.path.join(dir, mode), 'render_primitives_wheel_only', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname':'%s_ground' % mode, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True, 'batch_size': 2})
-        
-    return
-
-    camera_pos = numpy.load(os.path.join(dir, 'train.npy'))
-    render_t = numpy.load(os.path.join(dir, 'train_time.npy'))
-    train_start = numpy.load(os.path.join(dir, 'train_start.npy'))
-    nframes = render_t.shape[0]
-
-    render_single(os.path.join(dir, 'train'), 'render_primitives_wheel_only', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (80, 80), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname':'train_small', 'tile_only': True, 'tile_start': train_start, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True})
-    return
+    base_mode = sys.argv[1]
+    base_dir = sys.argv[2]
     
+    camera_dir = os.path.join(base_dir, 'datasets/datas_primitives_correct_test_range')
+    preprocess_dir = os.path.join(base_dir, 'preprocess/gear')
     
-    mode = 'validate'
+    if not os.path.exists(camera_dir):
+        os.makedirs(camera_dir, exist_ok=True)
+    
+    if not os.path.exists(preprocess_dir):
+        os.makedirs(preprocess_dir, exist_ok=True)
+    
+    if base_mode == 'collect_raw':
         
-    camera_pos = numpy.load(os.path.join(dir, '%s.npy' % mode))
-    render_t = numpy.load(os.path.join(dir, '%s_time.npy' % mode))
-    #tile_start = numpy.load(os.path.join(dir_cam, 'train_start.npy'))
-    nframes = camera_pos.shape[0]
+        camera_pos = numpy.load(os.path.join(camera_dir, 'train.npy'))
+        render_t = numpy.load(os.path.join(camera_dir, 'train_time.npy'))
+        nframes = render_t.shape[0]
+        
+        train_start = numpy.load(os.path.join(camera_dir, 'train_start.npy'))
+        render_single(os.path.join(preprocess_dir, 'train'), 'render_primitives_wheel_only', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (80, 80), render_kw={'render_t': render_t, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'zero_samples': False, 'gname': 'train_small', 'tile_only': True, 'tile_start': train_start, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True})
+        
+    elif base_mode == 'generate_dataset':
+        for mode in ['train', 'test_close', 'test_far', 'test_middle', 'validate']:
+            camera_pos = numpy.load(os.path.join(camera_dir, mode + '.npy'))            
+            nframes = camera_pos.shape[0]
+            
+            if mode in ['train', 'validate']:
+                tile_start = numpy.load(os.path.join(camera_dir, mode + '_start.npy'))[:nframes]
+                render_size = (320, 320)
+                tile_only = True
+                render_t = numpy.load(os.path.join(camera_dir, mode + '_time.npy'))
+            else:
+                tile_start = None
+                render_size = (640, 960)
+                tile_only = False
+                render_t_pool = numpy.load(os.path.join(camera_dir, 'test_time.npy'))
+                if mode == 'test_close':
+                    render_t = render_t_pool[:5]
+                elif mode == 'test_far':
+                    render_t = render_t_pool[5:10]
+                else:
+                    render_t = render_t_pool[10:]
+                    
+            render_t = render_t[:nframes]
+                    
+            outdir = get_shader_dirname(os.path.join(preprocess_dir, mode), shaders[0], 'none', 'none')
+                
+            render_single(os.path.join(preprocess_dir, mode), 'render_primitives_wheel_only', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = render_size, render_kw={'render_t': render_t, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'zero_samples': False, 'gname': '%s_ground' % mode, 'tile_only': tile_only, 'tile_start': tile_start, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True})
+            
+            if mode in ['train', 'validate']:
+                target_dir = os.path.join(camera_dir, mode + '_img')
+            else:
+                target_dir = os.path.join(camera_dir, 'test_img')
+                
+            if not os.path.exists(target_dir):
+                os.mkdir(target_dir)
+                
+            
+            for file in os.listdir(outdir):
+                if file.startswith('%s_ground' % mode) and file.endswith('.png'):
+                    os.rename(os.path.join(outdir, file),
+                              os.path.join(target_dir, file))
+                    
+    elif base_mode == 'sample_camera_pos':
+        
+        test_render_t = None
+        
+        t_range = 1
+        
+        for mode in ['train', 'test_close', 'test_far', 'test_middle', 'validate']:
+            
+            x_min = -1.0 + x_center
+            x_max = 1.0 + x_center
+            y_min = 0.8
+            y_max = 1.5
+            z_min = -1.0 + z_center
+            z_max = 1.0 + z_center
 
-    #render_single(dir, 'render_primitives_wheel_only', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (320, 320), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname':'train_small', 'tile_only': True, 'tile_start': tile_start, 'collect_feature_mean_only': True, 'feature_normalize_dir': dir, 'reference_dir': os.path.join(dir_cam, 'train_img'), 'collect_loop_and_features': True})
-    #return
-
-    # collect efficient trace for future correlation computation
-    #render_single(dir, 'render_primitives_wheel_only', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (10, 15), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'train_small', 'collect_loop_and_features': True})
-
-    #render_single(dir, 'render_primitives_wheel_only', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (10, 15), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'train_small', 'robust_simplification': True})
-    #return
-
-    render_single(os.path.join(dir, mode), 'render_primitives_wheel_only', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': '%s_noisy_expanded' % mode, 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True, 'expand_boundary': 160})
-    return
-
-        #render_single(os.path.join(dir, 'train'), 'render_primitives_wheel_only', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (40， 60), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname':'train_small', 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True, 'SELECT_FEATURE_THRE': 400})
-
-    for mode in ['test_close', 'test_far', 'test_middle']:
-        camera_pos = numpy.load(os.path.join(dir_cam, '%s.npy' % mode))
-        nframes = camera_pos.shape[0]
-        render_t = numpy.load(os.path.join(dir_cam, '%s_time.npy' % mode))
-        render_single('out', 'render_primitives_wheel_only', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname':'%s_ground' % mode})
-
-
-        #render_single('out', 'render_primitives_wheel_only', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (320, 320), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname':'train_ground', 'parallel_gpu': 4, 'tile_only': True, 'tile_start': tile_start, 'batch_size': 10})
-        return
-
-    if True:
-        x_min = -1.0 + x_center
-        x_max = 1.0 + x_center
-        y_min = 0.8
-        y_max = 1.5
-        z_min = -1.0 + z_center
-        z_max = 1.0 + z_center
-
-        # test_close and test_far is not descriptive
-        # they only represent novel camera views
-        # use this name only to be consistent with other dataset
-        for mode in ['validate']:
             if mode == 'train':
                 nframes = 800
             elif mode == 'validate':
@@ -276,6 +293,7 @@ def main():
                 nframes = 20
             else:
                 nframes = 5
+                
             if mode == 'test_close':
                 x_min = -1.5 + x_center
                 x_max = -1.0 + x_center
@@ -286,6 +304,7 @@ def main():
                 x_max = 1.0 + x_center
                 z_min = 1.0 + z_center
                 z_max = 1.5 + z_center
+                
             camera_pos = [None] * nframes
             for i in range(nframes):
                 while True:
@@ -296,168 +315,30 @@ def main():
                         break
                 rotation1, rotation2, rotation3 = pos_solver(camera_x, camera_y, camera_z)
                 camera_pos[i] = numpy.array([camera_x, camera_y, camera_z, rotation1, rotation2, rotation3])
+            
             camera_pos = numpy.array(camera_pos)
-            numpy.save(os.path.join(dir, mode + '.npy'), camera_pos)
-            numpy.save(os.path.join(dir, '%s_time.npy' % mode), np.zeros(nframes))
-            
-        return
-            
-    for mode in ['train', 'test_close', 'test_far', 'test_middle']:
-        camera_pos = numpy.load(os.path.join(dir, mode) + '.npy').tolist()
-        nframes = len(camera_pos)
-        render_single('out', 'render_primitives_wheel_only', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': mode + '_small'})
-        #render_single(os.path.join(dir, mode), 'render_primitives_aliasing', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (80, 120), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'small', 'collect_loop_and_features': True, 'last_only': True})
-        #render_single(os.path.join(dir, mode), 'render_primitives_aliasing', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (640, 960), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': mode + '_small', 'log_intermediates_level': 1, 'log_t_ray': True})
-    return
+            numpy.save(os.path.join(preprocess_dir, mode + '.npy'), camera_pos)
 
-    nframes = 100
-    extra_camera_pos = [None] * nframes
-    if False:
-    #for i in range(nframes):
-        x_min = -2.0 + x_center
-        x_max = 2.0 + x_center
-        y_min = 0.0
-        y_max = 2.0
-        z_min = -2.0 + z_center
-        z_max = 2.0 + z_center
-        camera_x = numpy.random.rand() * (x_max - x_min) + x_min
-        camera_y = numpy.random.rand() * (y_max - y_min) + y_min
-        camera_z = numpy.random.rand() * (z_max - z_min) + z_min
-        rotation1, rotation2, rotation3 = pos_solver(camera_x, camera_y, camera_z)
-        extra_camera_pos[i] = numpy.array([camera_x, camera_y, camera_z, rotation1, rotation2, rotation3])
-
-    #numpy.save(os.path.join(dir, 'camera_pos.npy'), numpy.array(camera_pos))
-    camera_pos = numpy.load(os.path.join(dir, 'camera_pos.npy'))
-    extra_camera_pos = numpy.load(os.path.join(dir_add, 'camera_pos.npy'))
-    #render_single(dir_test, 'render_primitives_aliasing', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'small'})
-    #render_single('out', 'render_primitives_aliasing', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False})
-    #render_single(dir, 'render_primitives_aliasing', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (160, 240), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'small', 'collect_loop_and_features': True})
-    compiler.log_intermediates_less = True
-    # uncomment ling 249, 250 to run this command
-    #render_single(dir_test, 'render_primitives_aliasing', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (160, 240), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'small'})
-    #render_single(dir_add, 'render_primitives_aliasing', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (160, 240), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': extra_camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'small'})
-    #numpy.save(os.path.join(dir_add, 'camera_pos.npy'), extra_camera_pos)
-    compiler.log_intermediates_less = False
-    avg_t = numpy.load(os.path.join(dir_test, 'primitives_aliasing_none_normal_none', 'avg_t.npy'))
-    avg_t_sorted = numpy.sort(avg_t)
-    ind = numpy.argsort(avg_t)
-    lo_ind = int(0.05 * avg_t.shape[0])
-    hi_ind = int(0.95 * avg_t.shape[0])
-    close_thr = avg_t_sorted[lo_ind]
-    far_thr = avg_t_sorted[hi_ind]
-
-    train_lo = close_thr * 1.5
-    train_hi = far_thr * 1.5
-
-    avg_t_add = numpy.load(os.path.join(dir_add, 'primitives_aliasing_none_normal_none', 'avg_t.npy'))
-    avg_t_ind = numpy.arange(nframes)
-    avg_t_valid_ind = avg_t_ind[(avg_t_add >= train_lo) * (avg_t_add <= train_hi)]
-
-    frames_needed = 0
-    for mode in ['test_close', 'test_far', 'train', 'test_middle']:
-        current_dir = os.path.join(dir, mode, 'primitives_aliasing_none_normal_none')
-        if not os.path.isdir(current_dir):
-            os.makedirs(current_dir)
-        if mode == 'test_close':
-            current_inds = [3, 140, 75, 126, 155, 0, 59, 47]
-        elif mode == 'test_far':
-            current_inds = [43, 52, 171, 156, 115, 73]
-        elif mode == 'train':
-            current_inds = ind[(avg_t_sorted >= train_lo) * (avg_t_sorted <= train_hi)]
-            frames_needed += 200 - len(current_inds)
-        else:
-            current_inds = []
-            frames_needed += 20 - len(current_inds)
-        print(len(current_inds))
-        print(current_inds)
-        if True:
-            current_camera_pos = numpy.empty([len(current_inds), 6])
-            for i in range(len(current_inds)):
-                current_ind = current_inds[i]
-                current_camera_pos[i, :] = camera_pos[current_ind, :]
-                ground_truth_src = 'out/primitives_aliasing_none_normal_none/ground%05d.png' % current_ind
-                ground_truth_dst = os.path.join(current_dir, mode + '_ground%05d.png' %i)
-                shutil.copyfile(ground_truth_src, ground_truth_dst)
-                small_src = 'out/primitives_aliasing_none_normal_none/small%05d.png' % current_ind
-                small_dst = os.path.join(current_dir, mode + '_small%05d.png' % i)
-                shutil.copyfile(small_src, small_dst)
-                #log_src = os.path.join(dir, 'primitives_aliasing_none_normal_none/g_intermediates%05d.npy' % current_ind)
-                #log_dst = os.path.join(current_dir, 'g_intermediates%05d.npy' % i)
-                #os.rename(log_src, log_dst)
-            numpy.save(os.path.join(dir, '%s.npy' % mode), current_camera_pos)
-    print("frames needed:", frames_needed)
-
-    assert len(avg_t_valid_ind) > frames_needed
-    print("success")
-    camera_pos_valid = extra_camera_pos[avg_t_valid_ind[:frames_needed], :]
-    #render_single(dir_add, 'render_primitives_aliasing', 'none', 'none', sys.argv[1:], nframes=frames_needed, log_intermediates=False, render_size = (640, 960), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos_valid, 'is_tf': True, 'zero_samples': False, 'gname': 'small'})
-    #render_single(dir_add, 'render_primitives_aliasing', 'none', 'none', sys.argv[1:], nframes=frames_needed, log_intermediates=False, render_size = (640, 960), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos_valid, 'is_tf': True, 'zero_samples': False})
-
-    add_frame_count = 0
-    for mode in ['train', 'test_middle']:
-        current_dir = os.path.join(dir, mode, 'primitives_aliasing_none_normal_none')
-        if not os.path.isdir(current_dir):
-            os.makedirs(current_dir)
-        if mode == 'train':
-            current_inds = ind[(avg_t_sorted >= train_lo) * (avg_t_sorted <= train_hi)]
-            current_frame_needed = 200 - len(current_inds)
-        else:
-            current_inds = []
-            current_frame_needed = 20 - len(current_inds)
-        print(len(current_inds))
-        print(current_inds)
-        print(current_frame_needed)
-        current_base = len(current_inds)
-        if True:
-            current_camera_pos = numpy.empty([current_frame_needed, 6])
-            for i in range(current_frame_needed):
-                current_camera_pos[i, :] = camera_pos_valid[i + add_frame_count, :]
-                ground_truth_src = os.path.join(dir_add, 'primitives_aliasing_none_normal_none/ground%05d.png' % (i + add_frame_count))
-                ground_truth_dst = os.path.join(current_dir, mode + '_ground%05d.png' % (i + current_base))
-                shutil.copyfile(ground_truth_src, ground_truth_dst)
-                small_src = os.path.join(dir_add, 'primitives_aliasing_none_normal_none/small%05d.png' % (i + add_frame_count))
-                small_dst = os.path.join(current_dir, mode + '_small%05d.png' % (i + current_base))
-                shutil.copyfile(small_src, small_dst)
-                #log_src = os.path.join(dir, 'primitives_aliasing_none_normal_none/g_intermediates%05d.npy' % current_ind)
-                #log_dst = os.path.join(current_dir, 'g_intermediates%05d.npy' % i)
-                #os.rename(log_src, log_dst)
-            add_frame_count += current_frame_needed
-
-            base_camera_file = os.path.join(dir, '%s.npy' % mode)
-            if os.path.exists(base_camera_file):
-                base_camera_pos = numpy.load(base_camera_file)
-                final_camera_pos = numpy.concatenate((base_camera_pos, current_camera_pos), axis=0)
+            if mode in ['train', 'validate']:
+                expand_boundary = 160
+                render_t = np.random.rand(nframes) * t_range
+                numpy.save(os.path.join(preprocess_dir, mode + '_time.npy'), render_t)
             else:
-                final_camera_pos = current_camera_pos
-
-            numpy.save(os.path.join(dir, '%s.npy' % mode), final_camera_pos)
-
+                expand_boundary = 0
+                if test_render_t is None:
+                    test_render_t = np.random.rand(30) * t_range
+                    np.save(os.path.join(preprocess_dir, 'test_time.npy'), render_t)
+                
+                if mode == 'test_close':
+                    render_t = test_render_t[:5]
+                elif mode == 'test_far':
+                    render_t = test_render_t[5:10]
+                else:
+                    render_t = test_render_t[10:]
+                    
+            render_single(os.path.join(preprocess_dir, mode), 'render_primitives_wheel_only', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'zero_samples': False, 'gname': '%s_noisy' % mode, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True, 'expand_boundary': expand_boundary})
+        
     return
-    nframes = 200
-    camera_pos = [None] * nframes
-    # center: x = -2.75, z = -0.43
-    # y range: 0 - 2
-    # x, z range from center: -4 - 4
-    center_x = -2.75
-    center_z = -0.43
-    x_min = -4.0
-    x_max = 4.0
-    y_min = 0.0
-    y_max = 2.0
-    z_min = -4.0
-    z_max = 4.0
-    for i in range(nframes):
-        rotation1 = numpy.random.rand() * 2.0 * numpy.pi
-        rotation2 = numpy.random.rand() * 2.0 * numpy.pi
-        rotation3 = numpy.random.rand() * 2.0 * numpy.pi
-        camera_x = numpy.random.rand() * (x_max - x_min) + x_min + center_x
-        camera_y = numpy.random.rand() * (y_max - y_min) + y_min
-        camera_z = numpy.random.rand() * (z_max - z_min) + z_min + center_z
-        #while True:
-        #    pass
-    render_single('out', 'render_primitives_aliasing', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': True})
-
-    # generate random camera pos
 
 if __name__ == '__main__':
     main()

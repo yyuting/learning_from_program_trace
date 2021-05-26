@@ -20,7 +20,7 @@ fps = 120.
 
 res_scale = 1.5
 
-def boids_coarse(my_id, p_x, p_y, v_x, v_y, other_boids, time):
+def boids(my_id, p_x, p_y, v_x, v_y, other_boids):
     
     acc = np.zeros(2)
     
@@ -133,58 +133,59 @@ def boids_coarse(my_id, p_x, p_y, v_x, v_y, other_boids, time):
     new_v_norm = length(new_v, 2)
     new_v = new_v * select(new_v_norm > MAX_V, MAX_V / new_v_norm, 1.0)
     
-    new_pos = np.array([p_x, p_y]) + new_v / fps * time
+    new_pos = np.array([p_x, p_y]) + new_v / fps
     
     #new_pos[0] = new_pos[0] - select(new_pos[0] > 64. * res_scale, 128. * res_scale, 0.0)
     #new_pos[1] = new_pos[1] - select(new_pos[1] > 64., 128., 0.0)
     #new_pos[0] = new_pos[0] + select(new_pos[0] < -64. * res_scale, 128. * res_scale, 0.0)
     #new_pos[1] = new_pos[1] + select(new_pos[1] < -64., 128., 0.0)
-    
-    for expr in new_pos.tolist() + new_v.tolist():
-        expr.log_intermediates_subset_rank = 1
         
     return output_color([new_pos[0], new_pos[1], new_v[0], new_v[1]])
 
-shaders = [boids_coarse]
+shaders = [boids]
 is_color = False
 
+
+    
 def main():
     
     if len(sys.argv) < 3:
         print('Usage: python render_[shader].py mode base_dir')
         raise
         
-    nframes = 56000
-    
-    min_sample_time = 20
-    max_sample_time = 64
-    sample_p = 1 / np.arange(min_sample_time, max_sample_time+1)
-    sample_p /= np.sum(sample_p)
-    sample_time = np.random.choice(np.arange(min_sample_time, max_sample_time+1), nframes, p=sample_p)
-        
     mode = sys.argv[1]
     base_dir = sys.argv[2]
     
     camera_dir = os.path.join(base_dir, 'datasets/datas_boids')
     preprocess_dir = os.path.join(base_dir, 'preprocess/boids')
-    
-    if mode == 'collect_raw':
-        texture_maps_pool = numpy.load(os.path.join(camera_dir, 'train_ground.npy'))
-        sample_pos = numpy.random.choice(np.arange(texture_maps_pool.shape[0]), nframes, replace=False)
-        texture_maps = texture_maps_pool[sample_pos]
-
-        texture_maps_file = os.path.join(camera_dir, 'texture_maps.npy')
-        np.save(texture_maps_file, texture_maps)
-        texture_maps = texture_maps_file
-
-        render_single(os.path.join(preprocess_dir, 'train'), 'render_boids_coarse', 'boids_coarse', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_kw={'compute_f': False, 'ground_truth_samples': 1, 'zero_samples': True, 'gname': 'train_ground', 'temporal_texture_buffer': True, 'texture_maps': texture_maps, 'use_texture_maps': True, 'n_boids': N_BOIDS, 'log_getitem': False, 'render_t': sample_time, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True})
-    
-    elif mode == 'generate_dataset':
         
-        os.system('python render_boids.py %s %s' % (mode, base_dir))
+    if mode == 'generate_dataset':
+        
+        for mode in ['train', 'test', 'validate']:
+            
+            if mode == 'train':
+                nframes = 1790000
+            elif mode == 'validate':
+                nframes = 85000
+            else:
+                nframes = 10000
+        
+            texture_maps = np.zeros([N_BOIDS, 4])
+            texture_maps[:, :2] = 0.1 + 0.9 * np.random.rand(N_BOIDS, 2)
+            texture_maps[:, :2] *= 128
+            texture_maps[:, :2] -= 64
+            texture_maps[:, 0] *= res_scale
+            texture_maps[:, 2:] = np.random.rand(N_BOIDS, 2) * 0.5 - 0.25
+            
+            outdir = get_shader_dirname(os.path.join(preprocess_dir, mode), shaders[0], 'none', 'boids')
+
+            render_single(os.path.join(preprocess_dir, mode), 'render_boids', 'boids', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_kw={'compute_f': False, 'ground_truth_samples': 1, 'zero_samples': True, 'gname': '%s_ground' % mode, 'temporal_texture_buffer': True, 'texture_maps': texture_maps, 'use_texture_maps': True, 'n_boids': N_BOIDS, 'log_getitem': False})
+            
+            os.rename(os.path.join(outdir, '%s_ground.npy' % mode),
+                      os.path.join(camera_dir, '%s_ground.npy' %mode))
         
     return
-
     
+
 if __name__ == '__main__':
     main()

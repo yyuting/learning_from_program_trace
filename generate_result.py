@@ -54,6 +54,8 @@ app_shader_dir_200 = {
                'msaa_sample': 1,
                'print': 'Bricks',
                'RGBx_ch': 105,
+               'shader': 'render_bricks_normal_texture',
+               'geometry': 'plane'
               },
     'mandelbrot': {'dir': ['1x_1sample_mandelbrot_with_bg_stratified_subsample_2/test',
                            '1x_1sample_mandelbrot_with_bg_aux_largest_capacity/test',
@@ -67,6 +69,8 @@ app_shader_dir_200 = {
                    'print': 'Mandelbrot',
                    'RGBx_ch': 389,
                    'fov': 'small',
+                   'shader': 'render_mandelbrot_tile_radius',
+                   'geometry': 'plane'
                   },
     'mandelbulb': {'dir': ['1x_1sample_mandelbulb_with_bg_all/test',
                            '1x_1sample_mandelbulb_with_bg_aux_largest_capacity/test',
@@ -79,7 +83,8 @@ app_shader_dir_200 = {
                    'print': 'Mandelbulb',
                    'RGBx_ch': 232,
                    'fov': 'small_seperable',
-                   'geometry': 'none'
+                   'geometry': 'none',
+                   'shader': 'render_mandelbulb_slim'
                   },
     'gear': {'dir': ['1x_1sample_primitives_all/test',
                            '1x_1sample_primitives_aux_largest_capacity/test',
@@ -103,8 +108,8 @@ app_shader_dir_200 = {
                    'print': 'Gear',
                    'RGBx_ch': 245,
                    'fov': 'small',
-                   'geometry': 'none'
-             
+                   'geometry': 'none',
+                   'shader': 'render_primitives_wheel_only'
                   },
     'trippy': {'dir': ['1x_1sample_trippy_stratified_subsample_8/test',
                '1x_1sample_trippy_aux_largest_capacity/test',
@@ -117,7 +122,9 @@ app_shader_dir_200 = {
                'print': 'Trippy Heart',
                'RGBx_ch': 744,
                'fov': 'small',
-               'every_nth': 2
+               'every_nth': 2,
+               'geometry': 'plane',
+               'shader': 'render_trippy_heart'
               },
     'oceanic': {'dir': ['1x_1sample_oceanic_all/test',
                 '1x_1sample_oceanic_aux_largest_capacity/test',
@@ -130,7 +137,8 @@ app_shader_dir_200 = {
                 'print': 'Oceanic',
                 'RGBx_ch': 211,
                 'fov': 'small',
-                'geometry': 'none'
+                'geometry': 'none',
+                'shader': 'render_oceanic_simple_all_raymarching'
                },
     'venice': {'dir': ['1x_1sample_venice_stratified_subsample_3/test',
                '1x_1sample_venice_aux_largest_capacity/test',
@@ -143,7 +151,8 @@ app_shader_dir_200 = {
                'print': 'Venice',
                'RGBx_ch': 517,
                'fov': 'small',
-               'geometry': 'none'
+               'geometry': 'none',
+               'shader': 'render_venice'
               },
     },
 'simplified': {
@@ -155,7 +164,9 @@ app_shader_dir_200 = {
                'img_zoom_bbox': [400, 480, 700, 760],
                'gt_dir': 'datas_bricks_simplified_with_bg/test_img',
                'print': 'Bricks',
-               'RGBx_ch': 95
+               'RGBx_ch': 95,
+               'shader': 'render_bricks_normal_texture_simplified_proxy',
+               'geometry': 'plane'
               },
     'mandelbrot': {'dir': ['1x_1sample_mandelbrot_simplified_with_bg_all/test',
                    '1x_1sample_mandelbrot_simplified_with_bg_aux_largest_capacity/test',
@@ -167,7 +178,9 @@ app_shader_dir_200 = {
                    'gt_dir': 'datas_mandelbrot_simplified_with_bg/test_img',
                    'print': 'Mandelbrot',
                    'fov': 'small',
-                   'RGBx_ch': 226
+                   'RGBx_ch': 226,
+                   'geometry': 'plane',
+                   'shader': 'render_mandelbrot_tile_radius_short_05'
                   },
     'mandelbulb': {'dir': ['1x_1sample_mandelbulb_with_bg_siimplified_all/test',
                    '1x_1sample_mandelbulb_simplified_with_bg_aux_largest_capacity/test',
@@ -179,7 +192,8 @@ app_shader_dir_200 = {
                    'print': 'Mandelbulb',
                    'geometry': 'none',
                    'fov': 'small_seperable',
-                   'RGBx_ch': 172
+                   'RGBx_ch': 172,
+                   'shader': 'render_mandelbulb_slim_simplified_proxy'
                   },
     'trippy': {'dir': ['1x_1sample_trippy_simplified_stratified_subsample_4/test',
                '1x_1sample_trippy_simplified_aux_largest_capacity/test',
@@ -201,7 +215,9 @@ app_shader_dir_200 = {
                'gt_dir': 'datas_trippy_simplified_new_extrapolation/test_img',
                'print': 'Trippy Heart',
                'fov': 'small',
-               'RGBx_ch': 760
+               'RGBx_ch': 760,
+               'geometry': 'plane',
+               'shader': 'render_trippy_heart_simplified_proxy'
               },
     'venice': {'dir': ['1x_1sample_venice_simplified_20_100_stratified_subsample_3/test',
                        '1x_1sample_venice_simplified_20_100_aux_largest_capacity/test',
@@ -214,7 +230,8 @@ app_shader_dir_200 = {
                'print': 'Venice',
                'geometry': 'none',
                'fov': 'small',
-               'RGBx_ch': 517
+               'RGBx_ch': 517,
+               'shader': 'render_venice_simplified_proxy_20_100'
               },
     },
 'temporal': {
@@ -225,7 +242,9 @@ app_shader_dir_200 = {
                    'gt_dir': 'datas_mandelbrot_temporal_with_bg/test_img',
                    'img_idx': 30,
                    'fov': 'small',
-                   'RGBx_ch': 389
+                   'RGBx_ch': 389,
+                   'shader': 'render_mandelbrot_tile_radius',
+                   'geometry': 'plane'
                   },
     'mandelbulb': {'dir': ['1x_1sample_mandelbulb_temporal_with_bg_non_gan_on_const_all/test',
                    '1x_1sample_mandelbulb_temporal_with_bg_non_gan_on_const_aux_largest_capacity/test'],
@@ -234,7 +253,8 @@ app_shader_dir_200 = {
                    'gt_dir': 'datas_mandelbulb_temporal_with_bg/test_img',
                    'geometry': 'none',
                    'fov': 'small_seperable', 
-                   'RGBx_ch': 232
+                   'RGBx_ch': 232,
+                   'shader': 'render_mandelbulb_slim'
                   },
     'trippy': {'dir': ['1x_1sample_trippy_temporal_stratified_subsample_8/test',
                        '1x_1sample_trippy_temporal_aux_largest_capacity/test'],
@@ -243,7 +263,9 @@ app_shader_dir_200 = {
                'gt_dir': 'datas_trippy_temporal_new_extrapolation_subsample_2/test_img',
                'fov': 'small', 
                'RGBx_ch': 744,
-               'every_nth': 2
+               'every_nth': 2,
+               'geometry': 'plane',
+               'shader': 'render_trippy_heart'
                   },
     'mandelbrot_simplified': {'dir': ['1x_1sample_mandelbrot_simplified_temporal_with_bg_non_gan_on_const_all/test',
                               '1x_1sample_mandelbrot_simplified_temporal_with_bg_non_gan_on_const_aux_largest_capacity/test'],
@@ -252,7 +274,9 @@ app_shader_dir_200 = {
                               'img_idx': 30,
                               'gt_dir': 'datas_mandelbrot_simplified_temporal_with_bg/test_img',
                               'fov': 'small', 
-                              'RGBx_ch': 226
+                              'RGBx_ch': 226,
+                              'shader': 'render_mandelbrot_tile_radius_short_05',
+                              'geometry': 'plane'
                              },
     'mandelbulb_simplified': {'dir': ['1x_1sample_mandelbulb_simplified_temporal_with_bg_non_gan_on_const_all/test',
                               '1x_1sample_mandelbulb_simplified_temporal_with_bg_non_gan_on_const_aux_largest_capacity/test'],
@@ -261,7 +285,8 @@ app_shader_dir_200 = {
                               'gt_dir': 'datas_mandelbulb_simplified_temporal_with_bg/test_img',
                               'fov': 'small_seperable',
                               'geometry': 'none',
-                              'RGBx_ch': 172
+                              'RGBx_ch': 172,
+                              'shader': 'render_mandelbulb_slim_simplified_proxy'
                              },
     
     'trippy_simplified': {'dir': ['1x_1sample_trippy_simplified_temporal_stratified_subsample_4/test',
@@ -270,7 +295,9 @@ app_shader_dir_200 = {
                           'img_idx': 30,
                           'gt_dir': 'datas_trippy_simplified_temporal_new_extrapolation/test_img',
                           'fov': 'small',
-                          'RGBx_ch': 760
+                          'RGBx_ch': 760,
+                          'geometry': 'plane',
+                          'shader': 'render_trippy_heart_simplified_proxy'
                          }
     },
 'post_processing': {
@@ -285,7 +312,8 @@ app_shader_dir_200 = {
                         'print': 'Mandelbulb Blur',
                         'geometry': 'none',
                         'fov': 'small_seperable',
-                        'RGBx_ch': 232
+                        'RGBx_ch': 232,
+                        'shader': 'render_mandelbulb_slim'
                        },
     'trippy_sharpen': {'dir': ['1x_1sample_trippy_local_laplacian_stratified_subsample_8/test',
                           '1x_1sample_trippy_local_laplacian_aux_largest_capacity/test'],
@@ -296,7 +324,9 @@ app_shader_dir_200 = {
                        'print': 'Trippy Heart Sharpen',
                        'fov': 'small',
                        'RGBx_ch': 744,
-                       'every_nth': 2
+                       'every_nth': 2,
+                       'geometry': 'plane',
+                       'shader': 'render_trippy_heart'
                       },
     'trippy_simplified_sharpen': {'dir': ['1x_1sample_trippy_simplified_local_laplacian_stratified_subsample_4/test',
                                      '1x_1sample_trippy_simplified_local_laplacian_aux_largest_capacity/test'],
@@ -306,7 +336,9 @@ app_shader_dir_200 = {
                                   'gt_dir': 'datas_trippy_simplified_new_extrapolation_local_laplacian/test_img',
                                   'print': 'Simplified Trippy Heart Sharpen',
                                   'fov': 'small',
-                                  'RGBx_ch': 760
+                                  'RGBx_ch': 760,
+                                  'geometry': 'plane',
+                                  'shader': 'render_trippy_heart_simplified_proxy'
                                  }
     },
 'simulation': {
@@ -314,7 +346,9 @@ app_shader_dir_200 = {
               'boids_aux_largest_capacity_ini_layers/test'],
               'gt_dir': 'datas_boids',
               'RGBx_ch': 1173,
-              'geometry': 'boids_coarse'}
+              'geometry': 'boids_coarse',
+              'shader': 'render_boids_coarse',
+              'gt_shader': 'render_boids'}
     },
     'unified': {
     'mandelbrot': {'dir': ['1x_1sample_unified_mandelbrot_mandelbulb_trippy_primitives_with_bg_automatic_200/test_mandelbrot',

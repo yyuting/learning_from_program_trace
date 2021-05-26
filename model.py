@@ -2733,6 +2733,7 @@ def main_network(args):
         else:
             os.makedirs(current_dir)
             render_current = True
+            
         for i in range(len(val_img_names)):
             print(i)
             output_ground = np.expand_dims(read_name(val_img_names[i], False, False), 0)

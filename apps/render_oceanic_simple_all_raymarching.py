@@ -200,52 +200,167 @@ shaders = [oceanic_simple_all_raymarching]
 is_color = True
 fov = 'small'
 
+def random_pos():
+    """
+    constrains:
+    dot product of ray from image center and verticle world axis should be between -0.3 and 0.0
+    dot product of verticle axis in image and verticle axis in world should be smaller than -0.95
+    """
+    while True:
+        ang1 = numpy.random.uniform(0.0, 2.0 * numpy.pi)
+        ang2 = numpy.random.uniform(0.0, 2.0 * numpy.pi)
+        ang3 = numpy.random.uniform(0.0, 2.0 * numpy.pi)
+        ans1 = numpy.cos(ang1) * numpy.cos(ang3) + numpy.sin(ang1) * numpy.sin(ang2) * numpy.sin(ang3)
+        ans2 = -numpy.sin(ang1) * numpy.cos(ang3) + numpy.cos(ang1) * numpy.sin(ang2) * numpy.sin(ang3)
+        ans3 = light[0] * (numpy.sin(ang1) * numpy.sin(ang3) + numpy.cos(ang1) + numpy.sin(ang2) + numpy.cos(ang3))
+        ans4 = light[1] * (-numpy.sin(ang1) * numpy.cos(ang3) + numpy.cos(ang1) * numpy.sin(ang2) * numpy.sin(ang3))
+        ans5 = light[2] * (numpy.cos(ang1) * numpy.cos(ang2))
+        if ans1 <= -0.95 and ans2 >= -0.3 and ans2 <= 0.0:
+            if ans3 + ans4 + ans5 > 0.85:
+                break
+    assert numpy.cos(ang1) * numpy.cos(ang3) + numpy.sin(ang1) * numpy.sin(ang2) * numpy.sin(ang3) <= -0.95
+    assert -numpy.sin(ang1) * numpy.cos(ang3) + numpy.cos(ang1) * numpy.sin(ang2) * numpy.sin(ang3) >= -0.3
+    assert -numpy.sin(ang1) * numpy.cos(ang3) + numpy.cos(ang1) * numpy.sin(ang2) * numpy.sin(ang3) <= 0.0
+    return ang1, ang2, ang3
+
 def main():
     
-    camdir = '/n/fs/shaderml/1x_1sample_oceanic_simple_apr20'
-    #dir = '/n/fs/visualai-scr/yutingy/oceanic_all_trace'
-    dir = camdir
-    
-    camera_pos = np.load(os.path.join(camdir, 'train.npy'))
-    render_t = np.load(os.path.join(camdir, 'train_time.npy'))
-    nframes = camera_pos.shape[0]
-    
-    render_single(os.path.join(dir, 'train'), 'render_oceanic_simple_all_raymarching', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'train_noisy_expanded', 'robust_simplification': True, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True, 'expand_boundary': 160})
-    return
-    
-    render_single(dir, 'render_oceanic_simple_all_raymarching', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (10, 15), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'train_small', 'robust_simplification': True, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True})
-    return
-    
-    
-    dir = '/shaderml/playground/1x_1sample_oceanic'
-    
-    mode = 'test_far'
+    if len(sys.argv) < 3:
+        print('Usage: python render_[shader].py base_mode base_dir')
+        raise
         
-    camera_pos = numpy.load(os.path.join(dir, '%s.npy' % mode))[1:2]
-    render_t = numpy.load(os.path.join(dir, '%s_time.npy' % mode))[1:2]
-
-    nframes = render_t.shape[0]
-
-    render_kw = {'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'gname': '%s_small' % mode, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True}
-
-    if mode in ['train', 'validate']:
-        tile_start = numpy.load(os.path.join(dir, '%s_start.npy' % mode))
-        render_kw['tile_only'] = True
-        render_kw['tile_start'] = tile_start
-        render_size = (80, 80)
-    else:
-        render_size = (640, 960)
+    base_mode = sys.argv[1]
+    base_dir = sys.argv[2]
+    
+    camera_dir = os.path.join(base_dir, 'datasets/datas_oceanic')
+    preprocess_dir = os.path.join(base_dir, 'preprocess/oceanic')
+    
+    if not os.path.exists(camera_dir):
+        os.makedirs(camera_dir, exist_ok=True)
+    
+    if not os.path.exists(preprocess_dir):
+        os.makedirs(preprocess_dir, exist_ok=True)
+    
+    if base_mode == 'collect_raw':
         
-    render_single(os.path.join(dir, mode), 'render_oceanic_simple_all_raymarching', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = render_size, render_kw=render_kw)
+        camera_pos = numpy.load(os.path.join(camera_dir, 'train.npy'))
+        render_t = numpy.load(os.path.join(camera_dir, 'train_time.npy'))
+        nframes = render_t.shape[0]
+        
+        train_start = numpy.load(os.path.join(camera_dir, 'train_start.npy'))
+        render_single(os.path.join(preprocess_dir, 'train'), 'render_oceanic_simple_all_raymarching', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (80, 80), render_kw={'render_t': render_t, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'zero_samples': False, 'gname': 'train_small', 'tile_only': True, 'tile_start': train_start, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True})
+        
+    elif base_mode == 'generate_dataset':
+        for mode in ['train', 'test_close', 'test_far', 'test_middle', 'validate']:
+            camera_pos = numpy.load(os.path.join(camera_dir, mode + '.npy'))            
+            nframes = camera_pos.shape[0]
+            
+            if mode in ['train', 'validate']:
+                tile_start = numpy.load(os.path.join(camera_dir, mode + '_start.npy'))[:nframes]
+                render_size = (320, 320)
+                tile_only = True
+                render_t = numpy.load(os.path.join(camera_dir, mode + '_time.npy'))
+            else:
+                tile_start = None
+                render_size = (640, 960)
+                tile_only = False
+                render_t_pool = numpy.load(os.path.join(camera_dir, 'test_time.npy'))
+                if mode == 'test_close':
+                    render_t = render_t_pool[:5]
+                elif mode == 'test_far':
+                    render_t = render_t_pool[5:10]
+                else:
+                    render_t = render_t_pool[10:]
+                    
+            render_t = render_t[:nframes]
+                    
+            outdir = get_shader_dirname(os.path.join(preprocess_dir, mode), shaders[0], 'none', 'none')
+                
+            render_single(os.path.join(preprocess_dir, mode), 'render_oceanic_simple_all_raymarching', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = render_size, render_kw={'render_t': render_t, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'zero_samples': False, 'gname': '%s_ground' % mode, 'tile_only': tile_only, 'tile_start': tile_start, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True})
+            
+            if mode in ['train', 'validate']:
+                target_dir = os.path.join(camera_dir, mode + '_img')
+            else:
+                target_dir = os.path.join(camera_dir, 'test_img')
+                
+            if not os.path.exists(target_dir):
+                os.mkdir(target_dir)
+                
+            
+            for file in os.listdir(outdir):
+                if file.startswith('%s_ground' % mode) and file.endswith('.png'):
+                    os.rename(os.path.join(outdir, file),
+                              os.path.join(target_dir, file))
+                    
+    elif base_mode == 'sample_camera_pos':
+        
+        test_render_t = None
+        
+        t_range = 100
+        
+        for mode in ['train', 'test_close', 'test_far', 'test_middle', 'validate']:
+            
+            x_min = -100.0
+            x_max = 100.0
+            z_min = -100.0
+            z_max = 100.0
+            
+            if mode == 'train':
+                nframes = 800
+                y_min = 100
+                y_max = 415
+            elif mode == 'validate':
+                nframes = 80
+                y_min = 100
+                y_max = 415
+            elif mode == 'test_middle':
+                nframes = 20
+                y_min = 100
+                y_max = 415
+            elif mode == 'test_close':
+                nframes = 5
+                y_min = 85
+                y_max = 100
+            else:
+                nframes = 5
+                y_min = 415
+                y_max = 600
+                
+            camera_pos = [None] * nframes
+
+            for i in range(nframes):
+                ang1, ang2, ang3 = random_pos()
+                assert numpy.cos(ang1) * numpy.cos(ang3) + numpy.sin(ang1) * numpy.sin(ang2) * numpy.sin(ang3) <= -0.95
+                assert -numpy.sin(ang1) * numpy.cos(ang3) + numpy.cos(ang1) * numpy.sin(ang2) * numpy.sin(ang3) >= -0.3
+                assert -numpy.sin(ang1) * numpy.cos(ang3) + numpy.cos(ang1) * numpy.sin(ang2) * numpy.sin(ang3) <= 0.0
+                print(numpy.cos(ang1) * numpy.cos(ang3) + numpy.sin(ang1) * numpy.sin(ang2) * numpy.sin(ang3), -numpy.sin(ang1) * numpy.cos(ang3) + numpy.cos(ang1) * numpy.sin(ang2) * numpy.sin(ang3))
+                pos_x = numpy.random.uniform(x_min, x_max)
+                pos_y = numpy.random.uniform(y_min, y_max)
+                pos_z = numpy.random.uniform(z_min, z_max)
+                camera_pos[i] = [pos_x, pos_y, pos_z, ang1, ang2, ang3]
+            camera_pos = numpy.array(camera_pos)
+            numpy.save(os.path.join(preprocess_dir, mode + '.npy'), camera_pos)
+
+            if mode in ['train', 'validate']:
+                expand_boundary = 160
+                render_t = np.random.rand(nframes) * t_range
+                numpy.save(os.path.join(preprocess_dir, mode + '_time.npy'), render_t)
+            else:
+                expand_boundary = 0
+                if test_render_t is None:
+                    test_render_t = np.random.rand(30) * t_range
+                    np.save(os.path.join(preprocess_dir, 'test_time.npy'), render_t)
+                
+                if mode == 'test_close':
+                    render_t = test_render_t[:5]
+                elif mode == 'test_far':
+                    render_t = test_render_t[5:10]
+                else:
+                    render_t = test_render_t[10:]
+                    
+            render_single(os.path.join(preprocess_dir, mode), 'render_oceanic_simple_all_raymarching', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'zero_samples': False, 'gname': '%s_noisy' % mode, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True, 'expand_boundary': expand_boundary})
+        
     return
-    
-    camera_pos = numpy.load(os.path.join(dir, 'train.npy'))
-    render_t = numpy.load(os.path.join(dir, 'train_time.npy'))
-    nframes = render_t.shape[0]
-    
-    render_single(os.path.join(dir, 'train'), 'render_oceanic_simple_all_raymarching', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'train_noisy_expanded', 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True, 'expand_boundary': 160})
-    return
-    #render_single(os.path.join(dir, 'train'), 'render_oceanic_simple_all_raymarching', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (80, 120), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'train_small', 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True})
 
 if __name__ == '__main__':
     main()

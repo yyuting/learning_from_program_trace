@@ -206,74 +206,89 @@ def pos_solver(x0, x1, x2):
 
 def main():
     
-    dir = '/shaderml/playground/1x_1sample_mandelbulb'
-    
-    camera_pos = np.load('/mnt/shadermlnfs1/shadermlvm/playground/models/out_videos/mandelbulb_camera_pos.npy')
-    render_t = np.load('/mnt/shadermlnfs1/shadermlvm/playground/models/out_videos/mandelbulb_render_t.npy')
-    nframes = camera_pos.shape[0]
-    
-    render_single(os.path.join(dir, 'video'), 'render_mandelbulb_slim', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'video_small', 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True, 'log_t_ray': True, 'log_intermediates_level': 2})
-    return
-    
-    render_single(os.path.join(dir, 'video'), 'render_mandelbulb_slim', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'video_ground', 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True, 'batch_size': 2})
-    return
-    
-    if True:
-        mode = 'train'
-
-        camera_pos = np.load(os.path.join(dir, '%s.npy' % mode))
-        render_t = np.load(os.path.join(dir, '%s_time.npy' % mode))
-        tile_start = np.load(os.path.join(dir, '%s_start.npy' % mode))
-        nframes = camera_pos.shape[0]
-
-        #render_single(os.path.join(dir, mode), 'render_mandelbulb_slim', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (320, 320), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': '%s_ground' % mode, 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True, 'batch_size': 10, 'tile_only': True, 'tile_start': tile_start})
+    if len(sys.argv) < 3:
+        print('Usage: python render_[shader].py base_mode base_dir')
+        raise
         
-        render_single(os.path.join(dir, mode), 'render_mandelbulb_slim', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (80, 80), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': '%s_small' % mode, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True, 'tile_only': True, 'tile_start': tile_start})
-        return
-
-        render_single(dir, 'render_mandelbulb_slim', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (10, 15), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'train_small', 'robust_simplification': True, 'every_nth': 41})
-        return
+    base_mode = sys.argv[1]
+    base_dir = sys.argv[2]
     
+    camera_dir = os.path.join(base_dir, 'datasets/datas_mandelbulb_with_bg')
+    preprocess_dir = os.path.join(base_dir, 'preprocess/mandelbulb')
     
+    if not os.path.exists(camera_dir):
+        os.makedirs(camera_dir, exist_ok=True)
     
-    # expected camera pos for train:
-    # x: -4, 3.5
-    # y: -4, 3.5
-    # z: -4, 4
-    # t: 0, 31.5
+    if not os.path.exists(preprocess_dir):
+        os.makedirs(preprocess_dir, exist_ok=True)
     
-    if False:
-        xyzs = [(0, 1.8, 0),
-                (1.8, 0, 0),
-                (0, 0, 1.8),
-                (1.28, 0, 1.28),
-                (1.28, 1.28, 0),
-                (0, 1.28, 1.28),
-                (1.04, 1.04, 1.04)]
-
-        camera_pos = np.empty([len(xyzs), 6])
-        for i in range(len(xyzs)):
-            x, y, z = xyzs[i]
-            ang1, ang2, ang3 = pos_solver(x, y, z)
-            camera_pos[i] = np.array([x, y, z, ang1, ang2, ang3])
-
-        render_t = numpy.zeros(camera_pos.shape[0])
+    if base_mode == 'collect_raw':
+        
+        camera_pos = numpy.load(os.path.join(camera_dir, 'train.npy'))
+        render_t = numpy.load(os.path.join(camera_dir, 'train_time.npy'))
         nframes = render_t.shape[0]
-
-        render_single(dir, 'render_mandelbulb_slim', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'test', 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True, 'expand_boundary': 160})
-        return
-    
-    if True:
         
-        x_min = -4
-        x_max = 4
-        y_min = -4
-        y_max = 4
-        z_min = -4
-        z_max = 4
+        train_start = numpy.load(os.path.join(camera_dir, 'train_start.npy'))
+        render_single(os.path.join(preprocess_dir, 'train'), 'render_mandelbulb_slim', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = (80, 80), render_kw={'render_t': render_t, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'zero_samples': False, 'gname': 'train_small', 'tile_only': True, 'tile_start': train_start, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True})
         
-        for mode in ['test_close', 'test_far', 'test_middle']:
+    elif base_mode == 'generate_dataset':
+        for mode in ['train', 'test_close', 'test_far', 'test_middle', 'validate']:
+            camera_pos = numpy.load(os.path.join(camera_dir, mode + '.npy'))            
+            nframes = camera_pos.shape[0]
+            
+            if mode in ['train', 'validate']:
+                tile_start = numpy.load(os.path.join(camera_dir, mode + '_start.npy'))[:nframes]
+                render_size = (320, 320)
+                tile_only = True
+                render_t = numpy.load(os.path.join(camera_dir, mode + '_time.npy'))
+            else:
+                tile_start = None
+                render_size = (640, 960)
+                tile_only = False
+                render_t_pool = numpy.load(os.path.join(camera_dir, 'test_time.npy'))
+                if mode == 'test_close':
+                    render_t = render_t_pool[:5]
+                elif mode == 'test_far':
+                    render_t = render_t_pool[5:10]
+                else:
+                    render_t = render_t_pool[10:]
+                    
+            render_t = render_t[:nframes]
+            
+                    
+            outdir = get_shader_dirname(os.path.join(preprocess_dir, mode), shaders[0], 'none', 'none')
+                
+            render_single(os.path.join(preprocess_dir, mode), 'render_mandelbulb_slim', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = render_size, render_kw={'render_t': render_t, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'zero_samples': False, 'gname': '%s_ground' % mode, 'tile_only': tile_only, 'tile_start': tile_start, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True})
+            
+            if mode in ['train', 'validate']:
+                target_dir = os.path.join(camera_dir, mode + '_img')
+            else:
+                target_dir = os.path.join(camera_dir, 'test_img')
+                
+            if not os.path.exists(target_dir):
+                os.mkdir(target_dir)
+                
+            
+            for file in os.listdir(outdir):
+                if file.startswith('%s_ground' % mode) and file.endswith('.png'):
+                    os.rename(os.path.join(outdir, file),
+                              os.path.join(target_dir, file))
+                    
+    elif base_mode == 'sample_camera_pos':
         
+        test_render_t = None
+        
+        t_range = 31.5
+        
+        for mode in ['train', 'test_close', 'test_far', 'test_middle', 'validate']:
+            
+            x_min = -4
+            x_max = 4
+            y_min = -4
+            y_max = 4
+            z_min = -4
+            z_max = 4
+            
             if mode == 'train':
                 nframes = 800
                 x_max = 3.5
@@ -294,7 +309,6 @@ def main():
                 y_max = 3.5
 
             camera_pos = numpy.empty([nframes, 6])
-            render_t = numpy.random.rand(nframes) * 31.5
 
             for i in range(nframes):
                 while True:
@@ -306,96 +320,106 @@ def main():
                 ang1, ang2, ang3 = pos_solver(x, y, z)
                 camera_pos[i] = np.array([x, y, z, ang1, ang2, ang3])
 
-            numpy.save(os.path.join(dir, '%s.npy' % mode), camera_pos)
-            numpy.save(os.path.join(dir, '%s_time.npy' % mode), render_t)
-        
-        
-        
-            render_single(os.path.join(dir, mode), 'render_mandelbulb_slim', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': '%s_ground' % mode, 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True, 'batch_size': 2})
-        return
-    
-    camera_pos = numpy.load(os.path.join(dir, 'train.npy'))
-    render_t = numpy.load(os.path.join(dir, 'train_time.npy'))
-    nframes = render_t.shape[0]
-    
-    render_single(os.path.join(dir, 'train'), 'render_mandelbulb_slim', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'fat_comp', 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True, 'expand_boundary': 160})
-    return
-    
-    render_single(os.path.join(dir, 'train'), 'render_mandelbulb_slim', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'is_tf': True, 'zero_samples': False, 'gname': 'train_noisy_expanded', 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True, 'expand_boundary': 160})
-    return
-    
-    cam_dir = '/n/fs/shaderml/FastImageProcessing/CAN24_AN/1x_1sample_mandelbulb_tile_more_trace_sigma_03_continued/render_fixed_sample'
-    
-    camera_pos = numpy.load('/n/fs/shaderml/FastImageProcessing/CAN24_AN/1x_1sample_mandelbulb_simplified_automatic_200/render_ours/camera_pos.npy')
-    render_t = numpy.load('/n/fs/shaderml/FastImageProcessing/CAN24_AN/1x_1sample_mandelbulb_simplified_automatic_200/render_ours/render_t.npy')
-    nframes = camera_pos.shape[0]
-    render_single('out', 'render_mandelbulb', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'gname': 'video_gt', 'is_tf': True, 'log_intermediates_level': 1, 'fov': 'small', 'batch_size': 10})
-    return
-    
-    if False:
-        camera_pos = np.load('/n/fs/shaderml/datas_mandelbulb_full_temporal/test_far.npy')[2:3]
-        render_t = np.load('/n/fs/shaderml/datas_mandelbulb_full_temporal/test_time.npy')[7:8] + 29 / 30
-        nframes = 1
-        render_single('out', 'render_mandelbulb', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'gname': 'mandelbulb_full_temporal_input', 'is_tf': True, 'log_intermediates_level': 1})
-        
-    camera_pos = numpy.load('/n/fs/shaderml/FastImageProcessing/CAN24_AN/1x_1sample_mandelbulb_tile_more_trace_sigma_03_continued/render_fixed_sample/camera_pos.npy')[29:30]
-    render_t = numpy.load('/n/fs/shaderml/FastImageProcessing/CAN24_AN/1x_1sample_mandelbulb_tile_more_trace_sigma_03_continued/render_fixed_sample/render_t.npy')[29:30]
-    nframes = 1
-    render_single('out', 'render_mandelbulb', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'gname': 'mandelbulb_simplified_temporal_gt', 'is_tf': True, 'log_intermediates_level': 1, 'batch_size': 10, 'fov': 'small'})
-    return
-    
-    #camera_pos = numpy.load(os.path.join(cam_dir, 'camera_pos.npy'))[:2]
-    #render_t = numpy.load(os.path.join(cam_dir, 'render_t.npy'))[:2]
-    #nframes = 2
-    #render_single(dir, 'render_mandelbulb', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'gname': 'render_ground', 'is_tf': True, 'log_intermediates_level': 1, 'fov': 'small'})
-    
-    #return
-
-    if True:
-        dir = '/n/fs/shaderml/1x_1sample_mandelbulb_tile'
-        cam_dir = '/n/fs/shaderml/datas_mandelbulb_tile_automate_def_return_only'
-        camera_pos = np.concatenate((
-                                np.load(os.path.join(cam_dir, 'test_close.npy')),
-                                np.load(os.path.join(cam_dir, 'test_far.npy')),
-                                np.load(os.path.join(cam_dir, 'test_middle.npy'))
-                                ), axis=0)
-        render_t = numpy.load(os.path.join(cam_dir, 'test_time.npy'))
-        nframes = render_t.shape[0]
-        render_t += 29 / 30
-        render_single(os.path.join(dir, 'test_temporal'), 'render_mandelbulb', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'gname': 'test_ground_29', 'is_tf': True, 'log_intermediates_level': 1})
-        return
-        
-        #for mode in ['train', 'test_close', 'test_far', 'test_middle']:
-        for mode in ['test_close', 'test_far', 'test_middle']:
-        #for mode in ['train']:
-            camera_pos = numpy.load(os.path.join(cam_dir, mode) + '.npy').tolist()
-            render_t = numpy.load(os.path.join(cam_dir, mode) + '_time.npy')
-            nframes = len(camera_pos)
-            if mode == 'train':
-                tile_start = numpy.load(os.path.join(cam_dir, mode) + '_start.npy')
-                for i in range(7):
-                    render_t += 1 / 30
-                    render_single(os.path.join(dir, mode), 'render_mandelbulb', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (320, 320), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'gname': mode + '_ground' + str(i+1), 'is_tf': True, 'log_intermediates_level': 1, 'tile_only': True, 'tile_start': tile_start})
-            else:
-                for i in range(7):
-                    render_t += 1 / 30
-                    render_single(os.path.join(dir, mode), 'render_mandelbulb', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'gname': mode + '_ground' + str(i+1), 'is_tf': True, 'log_intermediates_level': 1})
-            #if mode in ['test_close', 'test_far']:
-            #    nframes = 5
-            #else:
-            #    nframes = 20
-            #camera_pos = camera_pos[:nframes]
-            #render_t = render_t[:nframes]
-            #numpy.save(os.path.join(dir, mode) + '.npy', camera_pos)
-            #numpy.save(os.path.join(dir, mode) + '_time.npy', render_t)
-            #render_t = numpy.load(os.path.join(dir, mode) + '_time.npy')
-            #render_t = numpy.linspace(0.0, 2.0 * numpy.pi, nframes)
-            #numpy.save(os.path.join(dir, mode) + '_time.npy', render_t)
-            #render_single(os.path.join('out', mode), 'render_mandelbulb', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'gname': mode + '_ground', 'is_tf': True, 'log_intermediates_level': 1})
-            #render_single(os.path.join(dir, mode), 'render_mandelbulb', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (320, 320), render_kw={'render_t': render_t, 'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'gname': mode + '_ground', 'is_tf': True, 'log_intermediates_level': 1, 'tile_only': True, 'tile_start': tile_start, 'parallel_gpu': 4, 'batch_size': 10})
+            numpy.save(os.path.join(preprocess_dir, '%s.npy' % mode), camera_pos)
             
-            #render_single(os.path.join(dir, mode), 'render_mandelbulb', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size=(80, 120), render_kw={'compute_g': False, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'gname': mode + '_ground', 'is_tf': True, 'collect_loop_and_features': True, 'automate_loop_statistic': True, 'log_only_return_def_raymarching': True}
-        return
+            if mode in ['train', 'validate']:
+                expand_boundary = 160
+                render_t = np.random.rand(nframes) * t_range
+                numpy.save(os.path.join(preprocess_dir, mode + '_time.npy'), render_t)
+            else:
+                expand_boundary = 0
+                if test_render_t is None:
+                    test_render_t = np.random.rand(30) * t_range
+                    np.save(os.path.join(preprocess_dir, 'test_time.npy'), render_t)
+                
+                if mode == 'test_close':
+                    render_t = test_render_t[:5]
+                elif mode == 'test_far':
+                    render_t = test_render_t[5:10]
+                else:
+                    render_t = test_render_t[10:]
+                    
+            render_single(os.path.join(preprocess_dir, mode), 'render_mandelbulb_slim', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = (640, 960), render_kw={'render_t': render_t, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'zero_samples': False, 'gname': '%s_noisy' % mode, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True, 'expand_boundary': expand_boundary})
+            
+    elif base_mode == 'generate_temporal_dataset':
+        
+        camera_dir = os.path.join(base_dir, 'datasets/datas_mandelbulb_temporal_with_bg')
+        preprocess_dir = os.path.join(base_dir, 'preprocess/mandelbulb_temporal')
+        
+        if not os.path.exists(camera_dir):
+            os.makedirs(camera_dir, exist_ok=True)
+
+        if not os.path.exists(preprocess_dir):
+            os.makedirs(preprocess_dir, exist_ok=True)
+        
+        for mode in ['train', 'test', 'validate']:
+            
+            if mode in ['train', 'validate']:
+                tile_start = numpy.load(os.path.join(camera_dir, mode + '_start.npy'))
+                render_size = (320, 320)
+                tile_only = True
+                render_t_base = numpy.load(os.path.join(camera_dir, mode + '_time.npy'))
+                camera_pos = numpy.load(os.path.join(camera_dir, mode + '.npy'))        
+                t_schedule = np.arange(8)
+            else:
+                tile_start = None
+                render_size = (640, 960)
+                tile_only = False
+                render_t_base = numpy.load(os.path.join(camera_dir, 'test_time.npy'))
+                
+                camera_pos = np.concatenate((np.load(os.path.join(camera_dir, 'test_close.npy')),
+                                             np.load(os.path.join(camera_dir, 'test_far.npy')),
+                                             np.load(os.path.join(camera_dir, 'test_middle.npy'))), axis=0)
+                t_schedule = [0, 1, 29]
+                
+            nframes = camera_pos.shape[0]
+            outdir = get_shader_dirname(os.path.join(preprocess_dir, mode), shaders[0], 'none', 'none')
+            
+            for t_val in t_schedule:
+                render_t = render_t_base + t_val / 30
+
+                render_single(os.path.join(preprocess_dir, mode), 'render_mandelbulb_slim', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=False, render_size = render_size, render_kw={'render_t': render_t, 'compute_f': False, 'ground_truth_samples': 1000, 'random_camera': True, 'camera_pos': camera_pos, 'zero_samples': False, 'gname': '%s_ground_%d' % (mode, t_val), 'tile_only': tile_only, 'tile_start': tile_start, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True})
+                
+            target_dir = os.path.join(camera_dir, '%s_img' % mode)
+                
+            if not os.path.exists(target_dir):
+                os.mkdir(target_dir)
+
+            for file in os.listdir(outdir):
+                if file.startswith('%s_ground' % mode) and file.endswith('.png'):
+                    os.rename(os.path.join(outdir, file),
+                              os.path.join(target_dir, file))
+                    
+    elif base_mode == 'generate_blur_additional':
+        
+        preprocess_dir = os.path.join(base_dir, 'preprocess/mandelbulb_blur')
+        
+        for mode in ['train', 'test_close', 'test_far', 'test_middle', 'validate']:
+            camera_pos = numpy.load(os.path.join(camera_dir, mode + '.npy'))            
+            nframes = camera_pos.shape[0]
+            
+            if mode in ['train', 'validate']:
+                tile_start = numpy.load(os.path.join(camera_dir, mode + '_start.npy'))[:nframes]
+                render_size = (320, 320)
+                tile_only = True
+                render_t = numpy.load(os.path.join(camera_dir, mode + '_time.npy'))
+            else:
+                tile_start = None
+                render_size = (640, 960)
+                tile_only = False
+                render_t_pool = numpy.load(os.path.join(camera_dir, 'test_time.npy'))
+                if mode == 'test_close':
+                    render_t = render_t_pool[:5]
+                elif mode == 'test_far':
+                    render_t = render_t_pool[5:10]
+                else:
+                    render_t = render_t_pool[10:]
+                    
+            render_t = render_t[:nframes]
+            
+            render_single(os.path.join(preprocess_dir, mode), 'render_mandelbulb_slim', 'none', 'none', sys.argv[1:], nframes=nframes, log_intermediates=True, render_size = render_size, render_kw={'render_t': render_t, 'compute_f': False, 'ground_truth_samples': 1, 'random_camera': True, 'camera_pos': camera_pos, 'zero_samples': False, 'gname': '%s_noisy' % mode, 'tile_only': tile_only, 'tile_start': tile_start, 'collect_loop_and_features': True, 'log_only_return_def_raymarching': True, 'log_t_ray': True, 'log_intermediates_level': 2})
+            
+    return
 
 if __name__ == '__main__':
     main()
