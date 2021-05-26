@@ -5,6 +5,12 @@ Source code for paper "Learning from Shader Program Trace"
 
 The source code is developed and tested under python 3.6, TensorFlow 1.14 with CUDA 10.0. A full list of python environment can be found in environment.yml.
 
+## Trained Models and Datasets
+
+Trained models and testing datasets (along with a copy of the source code) can be downloaded from the following anonymous Google drive link (4.1GB):
+
+[https://drive.google.com/file/d/1CvQY_oZl3v3PU3p0Ez3ls-UMTlI1IZ41/view?usp=sharing](https://drive.google.com/file/d/1CvQY_oZl3v3PU3p0Ez3ls-UMTlI1IZ41/view?usp=sharing)
+
 ## Reproduce model inference results
 
 Generate script for inference commands:
@@ -12,6 +18,8 @@ Generate script for inference commands:
     python generate_script.py --modelroot ./ --mode inference
 
 This will generate a script.sh with inference commands. Each command is commented to explain what result it can reproduce.
+
+NOTE: the script only runs properly if trained model and datasets are downloaded.
 
 ## Reproduce figures / tables in paper
 
@@ -25,6 +33,8 @@ All table results: result_figs/table.pdf
 
 All qualitative results: result_figs/fig_main.pdf
 
+NOTE: this command only runs properly if trained model and datasets are downloaded.
+
 ## Re-sample and Re-generate datasets
 
 Generate script for re-sampling and re-generating training / testing / validation datasets
@@ -37,17 +47,23 @@ Generate script for re-training model. Note due to anonymous Google drive's stor
 
     python generate_script.py --modelroot ./ --mode train
     
+NOTE: the script only runs properly if training datasets are available (which will be released upon publication). Training datasets can also be re-genrenerated using the commands above.
+    
 ## Validate model
 
 Generate script to run validation on trained intermediate models. Note due to anonymous Google drive's storage limit, we did not include validation dataset. Actually running the command will fail unless validation dataset is re-generated. We will release the entire dataset upon publication.
 
     python generate_script.py --modelroot ./ --mode validation
     
+NOTE: the script only runs properly if validation datasets are available (which will be released upon publication). Validation datasets can also be re-genrenerated using the commands above.
+    
 ## Profile inference runtime
 
 Generate script that accurately estimates inference runtime.
 
     python generate_script.py --modelroot ./ --mode accurate_timing
+    
+NOTE: this command only runs properly if trained model and datasets are downloaded.
 
 ## Reference
 
