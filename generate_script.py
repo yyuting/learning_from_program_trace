@@ -450,6 +450,8 @@ def main():
     
     args = parser.parse_args()
     
+    args.modelroot = os.path.abspath(args.modelroot)
+    
     assert args.mode in all_modes
     
     if args.applications != '':
