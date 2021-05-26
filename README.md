@@ -19,7 +19,7 @@ This will generate a script.sh with inference commands. Each command is commente
     
 This will reproduce the following result.
 
-Fig 2: result_figs/fig2.png
+Fig 1 right: result_figs/fig1.png
 
 All table results: result_figs/table.pdf
 
