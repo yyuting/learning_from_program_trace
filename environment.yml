@@ -62,6 +62,9 @@ dependencies:
     - tensorflow-estimator==1.14.0
     - tensorflow-gpu==1.14.0
     - termcolor==1.1.0
+    - torch==1.6.0+cu101
+    - torchfile==0.1.0
+    - torchvision==0.7.0+cu101
     - urllib3==1.25.8
     - werkzeug==1.0.0
     - wrapt==1.12.0

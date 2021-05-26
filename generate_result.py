@@ -662,7 +662,7 @@ def main():
                 app_data[shader_name]['ssim'] = ssim_score
                 app_data[shader_name]['psnr'] = psnr_score
 
-    if 'fig2' in mode or mode == 'all':
+    if 'fig1' in mode or mode == 'all':
         
         fontsize = 14
         
@@ -722,10 +722,10 @@ def main():
         plt.ylabel('Relative Error', fontsize=fontsize)
 
         plt.tight_layout()
-        plt.savefig('result_figs/fig2.png')
+        plt.savefig('result_figs/fig1.png')
         plt.close(fig)
         
-        print('Result saved in result_figs/fig2.png')
+        print('Result saved in result_figs/fig1.png')
     
     
     if 'table' in mode or mode == 'all':
@@ -1267,7 +1267,7 @@ def main():
         except:
             print('pdflatex compilation failed, table tex file saved in result_figs/fig_main.tex')
             
-    if 'html' in mode or mode == 'all':
+    if 'html' in mode:
         html_img_format = '.jpg'
         
         # generate images for html viewer

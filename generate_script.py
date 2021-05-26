@@ -212,10 +212,11 @@ def generate_script(application, args):
         all_str += '# ' + warning_msg
         
     if application == 'simulation':
-        
+
         # Hard-code the command for boids, as it's very different from other imagery models
         assert len(entries) == 1 and 'boids' in entries
-        assert args.mode in ['train', 'inference']
+        if args.mode not in ['train', 'inference']:
+            return ''
         
         info = app_shader_dir_200[application]['boids']
         dataset_dir = info['gt_dir'].split('/')[0]

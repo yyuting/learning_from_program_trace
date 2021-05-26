@@ -7,7 +7,7 @@ The source code is developed and tested under python 3.6, TensorFlow 1.14 with C
 
 ## Reproduce model inference results
 
-Generate script or inference commands:
+Generate script for inference commands:
 
     python generate_script.py --modelroot ./ --mode inference
 
@@ -24,6 +24,30 @@ Fig 2: result_figs/fig2.png
 All table results: result_figs/table.pdf
 
 All qualitative results: result_figs/fig_main.pdf
+
+## Re-sample and Re-generate datasets
+
+Generate script for re-sampling and re-generating training / testing / validation datasets
+
+    python generate_script.py --modelroot ./ --mode prepare_dataset
+
+## Re-train model
+
+Generate script for re-training model. Note due to anonymous Google drive's storage limit, we did not include training dataset. Actually running the command will fail unless training dataset is re-generated. We will release the entire dataset upon publication.
+
+    python generate_script.py --modelroot ./ --mode train
+    
+## Validate model
+
+Generate script to run validation on trained intermediate models. Note due to anonymous Google drive's storage limit, we did not include validation dataset. Actually running the command will fail unless validation dataset is re-generated. We will release the entire dataset upon publication.
+
+    python generate_script.py --modelroot ./ --mode validation
+    
+## Profile inference runtime
+
+Generate script that accurately estimates inference runtime.
+
+    python generate_script.py --modelroot ./ --mode accurate_timing
 
 ## Reference
 
