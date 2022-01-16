@@ -7,9 +7,9 @@ The source code is developed and tested under python 3.6, TensorFlow 1.14 with C
 
 ## Trained Models and Datasets
 
-Trained models and testing datasets (along with a copy of the source code) can be downloaded from the following anonymous Google drive link (4.1GB):
+Trained models and testing datasets (along with a copy of the source code) can be downloaded from the following Google drive link (4GB):
 
-[https://drive.google.com/file/d/1CvQY_oZl3v3PU3p0Ez3ls-UMTlI1IZ41/view?usp=sharing](https://drive.google.com/file/d/1CvQY_oZl3v3PU3p0Ez3ls-UMTlI1IZ41/view?usp=sharing)
+[https://drive.google.com/file/d/1MHqX_ZCxxEivcygFkWObNKh_ZV872eQu/view?usp=sharing](https://drive.google.com/file/d/1MHqX_ZCxxEivcygFkWObNKh_ZV872eQu/view?usp=sharing)
 
 ## Reproduce model inference results
 
