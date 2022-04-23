@@ -65,7 +65,7 @@ Generate script that accurately estimates inference runtime.
     
 NOTE: this command only runs properly if trained model and datasets are downloaded.
 
-## Reference
+## Code Reference
 
 This project uses / modifies the following repositories, our manuscript also cites related papers.
 
