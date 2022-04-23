@@ -1,5 +1,5 @@
 # learning_from_program_trace
-Source code for paper "Learning from Shader Program Trace"
+Source code for Eurographics 2022 paper "Learning from Shader Program Trace"
 
 ## Package dependencies
 
@@ -76,3 +76,17 @@ This project uses / modifies the following repositories, our manuscript also cit
 [3] [MLNet-Pytorch](https://github.com/immortal3/MLNet-Pytorch) (Apache-2.0 License)
 
 [4] [simplexnoise](https://github.com/pinae/simplexnoise) (GPL-3.0 License)
+
+## Citation and Bibtex
+
+Yuting Yang, Connelly Barnes and Adam Finkelstein.
+"Learning from Shader Program Traces."
+Eurographics, to appear, April 2022 , April, 2022.
+
+@inproceedings{Yang:2022:LFS,
+   author = "Yuting Yang and Connelly Barnes and Adam Finkelstein",
+   title = "Learning from Shader Program Traces",
+   booktitle = "Eurographics, to appear",
+   year = "2022",
+   month = apr
+}
