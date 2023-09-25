@@ -9,7 +9,7 @@ The source code is developed and tested under python 3.6, TensorFlow 1.14 with C
 
 Trained models and testing datasets (along with a copy of the source code) can be downloaded from the following Google drive link (4GB):
 
-[https://drive.google.com/file/d/1MHqX_ZCxxEivcygFkWObNKh_ZV872eQu/view?usp=sharing](https://drive.google.com/file/d/1MHqX_ZCxxEivcygFkWObNKh_ZV872eQu/view?usp=sharing)
+[https://drive.google.com/file/d/1ArB23m-EhTN81YGDn0La-UnDEFbjk0ZQ/view?usp=drive_link](https://drive.google.com/file/d/1ArB23m-EhTN81YGDn0La-UnDEFbjk0ZQ/view?usp=drive_link)
 
 ## Reproduce model inference results
 
@@ -24,7 +24,7 @@ NOTE: the script only runs properly if trained model and datasets are downloaded
 ## Reproduce figures / tables in paper
 
     python generate_result.py ./
-    
+
 This will reproduce the following result.
 
 Fig 1 right: result_figs/fig1.png
@@ -46,23 +46,23 @@ Generate script for re-sampling and re-generating training / testing / validatio
 Generate script for re-training model. Note due to anonymous Google drive's storage limit, we did not include training dataset. Actually running the command will fail unless training dataset is re-generated. We will release the entire dataset upon publication.
 
     python generate_script.py --modelroot ./ --mode train
-    
+
 NOTE: the script only runs properly if training datasets are available (which will be released upon publication). Training datasets can also be re-genrenerated using the commands above.
-    
+
 ## Validate model
 
 Generate script to run validation on trained intermediate models. Note due to anonymous Google drive's storage limit, we did not include validation dataset. Actually running the command will fail unless validation dataset is re-generated. We will release the entire dataset upon publication.
 
     python generate_script.py --modelroot ./ --mode validation
-    
+
 NOTE: the script only runs properly if validation datasets are available (which will be released upon publication). Validation datasets can also be re-genrenerated using the commands above.
-    
+
 ## Profile inference runtime
 
 Generate script that accurately estimates inference runtime.
 
     python generate_script.py --modelroot ./ --mode accurate_timing
-    
+
 NOTE: this command only runs properly if trained model and datasets are downloaded.
 
 ## Code Reference
